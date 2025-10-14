@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <widget class="QLineEdit" name="packageNameInput">
+     <property name="placeholderText">
+      <string>Enter package name</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="installButton">
+     <property name="text">
+      <string>Install Package</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="removeButton">
+     <property name="text">
+      <string>Remove Package</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="updateButton">
+     <property name="text">
+      <string>Update Package List</string>
+     </property>
+    </widget>
+    <widget class="QListView" name="packageListView"/>
+   </layout>
+  </widget>
+  <menuBar class="QMenuBar" name="menubar">
+   <menu class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+   </menu>
+  </menuBar>
+  <statusBar class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
