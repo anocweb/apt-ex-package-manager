@@ -2,44 +2,103 @@ from PyQt6.QtWidgets import QMainWindow, QGridLayout, QLabel, QPushButton, QWidg
 from PyQt6.QtCore import Qt
 from PyQt6 import uic
 from models.package_model import Package
+import os
 
 class MainView(QMainWindow):
     def __init__(self, package_manager):
         super().__init__()
         self.package_manager = package_manager
-        uic.loadUi('src/ui/main_window.ui', self)
-        self.setup_ui()
         self.current_packages = []
+        self.selected_button = None
+        self.sidebar_buttons = {}
+        self.content_layouts = {}
+        self.panels = {}
+        uic.loadUi('src/ui/main_window.ui', self)
+        self.load_panels()
+        self.setup_ui()
 
     def setup_ui(self):
-        self.search_input.textChanged.connect(self.search_packages)
-        self.package_layout = QGridLayout(self.package_container)
+        # Setup content layouts from loaded panels
+        home_panel = self.panels['home']
+        installed_panel = self.panels['installed']
+        category_panel = self.panels['category']
+        
+        self.package_layout = QGridLayout(home_panel.package_container)
+        self.content_layouts['installed'] = QGridLayout(installed_panel.installedContainer)
+        self.content_layouts['category'] = QGridLayout(category_panel.categoryContainer)
+        
+        # Connect search functionality from home panel
+        home_panel.search_input.textChanged.connect(self.search_packages)
+        
+        # Store sidebar buttons for selection management
+        self.sidebar_buttons = {
+            'home': self.homeBtn,
+            'installed': self.installedBtn,
+            'updates': self.updatesBtn,
+            'settings': self.settingsBtn,
+            'about': self.aboutBtn,
+            'all': self.allAppsBtn,
+            'accessibility': self.accessibilityBtn,
+            'development': self.developmentBtn,
+            'education': self.educationBtn,
+            'games': self.gamesBtn,
+            'graphics': self.graphicsBtn,
+            'internet': self.internetBtn,
+            'multimedia': self.multimediaBtn,
+            'office': self.officeBtn,
+            'science': self.scienceBtn,
+            'system': self.systemBtn,
+            'utilities': self.utilitiesBtn
+        }
+        
+
         
         # Connect main navigation buttons
-        self.homeBtn.clicked.connect(self.show_home)
-        self.installedBtn.clicked.connect(self.show_installed)
-        self.updatesBtn.clicked.connect(self.show_updates)
-        self.settingsBtn.clicked.connect(self.show_settings)
-        self.aboutBtn.clicked.connect(self.show_about)
+        self.homeBtn.clicked.connect(lambda: self.select_page('home', 0))
+        self.installedBtn.clicked.connect(lambda: self.select_page('installed', 1))
+        self.updatesBtn.clicked.connect(lambda: self.select_page('updates', 2))
+        self.settingsBtn.clicked.connect(lambda: self.select_page('settings', 4))
+        self.aboutBtn.clicked.connect(lambda: self.select_page('about', 5))
         
         # Connect category buttons
-        self.allAppsBtn.clicked.connect(lambda: self.show_category("all"))
-        self.accessibilityBtn.clicked.connect(lambda: self.show_category("accessibility"))
-        self.developmentBtn.clicked.connect(lambda: self.show_category("development"))
-        self.educationBtn.clicked.connect(lambda: self.show_category("education"))
-        self.gamesBtn.clicked.connect(lambda: self.show_category("games"))
-        self.graphicsBtn.clicked.connect(lambda: self.show_category("graphics"))
-        self.internetBtn.clicked.connect(lambda: self.show_category("internet"))
-        self.multimediaBtn.clicked.connect(lambda: self.show_category("multimedia"))
-        self.officeBtn.clicked.connect(lambda: self.show_category("office"))
-        self.scienceBtn.clicked.connect(lambda: self.show_category("science"))
-        self.systemBtn.clicked.connect(lambda: self.show_category("system"))
-        self.utilitiesBtn.clicked.connect(lambda: self.show_category("utilities"))
+        self.allAppsBtn.clicked.connect(lambda: self.select_category('all'))
+        self.accessibilityBtn.clicked.connect(lambda: self.select_category('accessibility'))
+        self.developmentBtn.clicked.connect(lambda: self.select_category('development'))
+        self.educationBtn.clicked.connect(lambda: self.select_category('education'))
+        self.gamesBtn.clicked.connect(lambda: self.select_category('games'))
+        self.graphicsBtn.clicked.connect(lambda: self.select_category('graphics'))
+        self.internetBtn.clicked.connect(lambda: self.select_category('internet'))
+        self.multimediaBtn.clicked.connect(lambda: self.select_category('multimedia'))
+        self.officeBtn.clicked.connect(lambda: self.select_category('office'))
+        self.scienceBtn.clicked.connect(lambda: self.select_category('science'))
+        self.systemBtn.clicked.connect(lambda: self.select_category('system'))
+        self.utilitiesBtn.clicked.connect(lambda: self.select_category('utilities'))
         
+        # Set initial selection
+        self.select_page('home', 0)
         self.load_initial_packages()
+    
+    def load_panels(self):
+        """Load all panel UI files and add them to the content stack"""
+        panel_files = {
+            'home': 'home_panel.ui',
+            'installed': 'installed_panel.ui', 
+            'updates': 'updates_panel.ui',
+            'category': 'category_panel.ui',
+            'settings': 'settings_panel.ui',
+            'about': 'about_panel.ui'
+        }
+        
+        for panel_name, ui_file in panel_files.items():
+            panel_widget = QWidget()
+            ui_path = os.path.join('src', 'ui', ui_file)
+            uic.loadUi(ui_path, panel_widget)
+            self.panels[panel_name] = panel_widget
+            self.contentStack.addWidget(panel_widget)
 
     def search_packages(self):
-        query = self.search_input.text()
+        home_panel = self.panels['home']
+        query = home_panel.search_input.text()
         if query:
             self.current_packages = self.package_manager.search_packages(query)
         else:
@@ -90,30 +149,50 @@ class MainView(QMainWindow):
         self.package_manager.install_package(package_name)
         self.statusbar.showMessage(f"Installing {package_name}...", 3000)
     
-    def show_installed(self):
-        self.current_packages = self.package_manager.get_installed_packages()
-        self.update_package_display()
-        self.statusbar.showMessage("Showing installed packages", 2000)
+    def select_page(self, page_key, page_index):
+        # Update button selection
+        self.update_button_selection(page_key)
+        
+        # Switch to the appropriate page
+        self.contentStack.setCurrentIndex(page_index)
+        
+        # Update page title
+        page_titles = {
+            'home': 'Welcome to Apt-Ex Package Manager',
+            'installed': 'Installed Packages',
+            'updates': 'Available Updates',
+            'settings': 'Settings',
+            'about': 'About Apt-Ex Package Manager'
+        }
+        self.pageTitle.setText(page_titles.get(page_key, 'Apt-Ex Package Manager'))
+        
+        # Load content based on page
+        if page_key == 'home':
+            self.current_packages = self.package_manager.get_installed_packages()[:6]
+            self.update_package_display()
+            self.statusbar.showMessage("Home - Featured applications", 2000)
+        elif page_key == 'installed':
+            self.current_packages = self.package_manager.get_installed_packages()
+            self.update_installed_display()
+            self.statusbar.showMessage("Showing installed packages", 2000)
+        elif page_key == 'updates':
+            self.statusbar.showMessage("No updates available", 2000)
+        elif page_key == 'settings':
+            self.statusbar.showMessage("Settings panel", 2000)
+        elif page_key == 'about':
+            self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
     
-    def show_updates(self):
-        # Mock updates - in real implementation would check for updates
-        self.current_packages = []
-        self.update_package_display()
-        self.statusbar.showMessage("No updates available", 2000)
-    
-    def show_settings(self):
-        self.statusbar.showMessage("Settings not implemented yet", 2000)
-    
-    def show_home(self):
-        self.current_packages = self.package_manager.get_installed_packages()[:6]  # Featured apps
-        self.update_package_display()
-        self.statusbar.showMessage("Home - Featured applications", 2000)
-    
-    def show_about(self):
-        self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
-    
-    def show_category(self, category):
-        # Mock category filtering with more categories
+    def select_category(self, category):
+        # Update button selection
+        self.update_button_selection(category)
+        
+        # Switch to category page
+        self.contentStack.setCurrentIndex(3)
+        
+        # Update page title for category
+        self.pageTitle.setText(f"{category.title()} Packages")
+        
+        # Load category packages
         mock_packages = {
             "all": self.package_manager.get_installed_packages(),
             "accessibility": [Package("orca", "3.38", "Screen reader")],
@@ -129,5 +208,51 @@ class MainView(QMainWindow):
             "utilities": [Package("file-roller", "3.40", "Archive manager"), Package("calculator", "40.0", "Calculator")]
         }
         self.current_packages = mock_packages.get(category, [])
-        self.update_package_display()
+        self.update_category_display()
         self.statusbar.showMessage(f"Showing {category} packages", 2000)
+    
+    def update_button_selection(self, selected_key):
+        # Clear previous selection
+        if self.selected_button:
+            self.selected_button.setProperty("selected", "false")
+            self.selected_button.style().unpolish(self.selected_button)
+            self.selected_button.style().polish(self.selected_button)
+        
+        # Set new selection
+        if selected_key in self.sidebar_buttons:
+            self.selected_button = self.sidebar_buttons[selected_key]
+            self.selected_button.setProperty("selected", "true")
+            self.selected_button.style().unpolish(self.selected_button)
+            self.selected_button.style().polish(self.selected_button)
+    
+    def update_installed_display(self):
+        layout = self.content_layouts['installed']
+        # Clear existing widgets
+        for i in reversed(range(layout.count())):
+            layout.itemAt(i).widget().setParent(None)
+        
+        # Add package cards
+        row, col = 0, 0
+        for package in self.current_packages[:20]:
+            card = self.create_package_card(package)
+            layout.addWidget(card, row, col)
+            col += 1
+            if col >= 3:
+                col = 0
+                row += 1
+    
+    def update_category_display(self):
+        layout = self.content_layouts['category']
+        # Clear existing widgets
+        for i in reversed(range(layout.count())):
+            layout.itemAt(i).widget().setParent(None)
+        
+        # Add package cards
+        row, col = 0, 0
+        for package in self.current_packages[:20]:
+            card = self.create_package_card(package)
+            layout.addWidget(card, row, col)
+            col += 1
+            if col >= 3:
+                col = 0
+                row += 1

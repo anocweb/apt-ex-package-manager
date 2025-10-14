@@ -10,6 +10,12 @@
     <height>700</height>
    </rect>
   </property>
+  <property name="minimumSize">
+   <size>
+    <width>750</width>
+    <height>550</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Apt-Ex Package Manager</string>
   </property>
@@ -17,9 +23,15 @@
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <widget class="QWidget" name="sidebar" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>220</width>
+        <height>0</height>
+       </size>
+      </property>
       <property name="maximumSize">
        <size>
-        <width>250</width>
+        <width>220</width>
         <height>16777215</height>
        </size>
       </property>
@@ -33,17 +45,18 @@ QPushButton {
   font-size: 14px;
 }
 QPushButton:hover { background-color: #3e4a61; }
-QPushButton:pressed { background-color: #1e2328; }</string>
+QPushButton:pressed { background-color: #1e2328; }
+QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</string>
       </property>
-      <layout class="QVBoxLayout" name="sidebarLayout">
+      <layout class="QVBoxLayout" name="sidebarWrapperLayout">
        <property name="spacing">
-        <number>2</number>
+        <number>0</number>
        </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
        <property name="topMargin">
-        <number>8</number>
+        <number>0</number>
        </property>
        <property name="rightMargin">
         <number>0</number>
@@ -51,6 +64,45 @@ QPushButton:pressed { background-color: #1e2328; }</string>
        <property name="bottomMargin">
         <number>0</number>
        </property>
+       <item>
+        <widget class="QScrollArea" name="sidebarScrollArea">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="verticalScrollBarPolicy">
+          <enum>Qt::ScrollBarAsNeeded</enum>
+         </property>
+         <property name="styleSheet">
+          <string>QScrollArea { border: none; background-color: transparent; }</string>
+         </property>
+         <widget class="QWidget" name="sidebarContent">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>220</width>
+            <height>400</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="sidebarLayout">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
        <item>
         <widget class="QPushButton" name="homeBtn">
          <property name="text">
@@ -196,34 +248,52 @@ QPushButton:pressed { background-color: #1e2328; }</string>
          </property>
         </spacer>
        </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QWidget" name="mainContent" native="true">
+     <widget class="QWidget" name="contentArea" native="true">
       <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
-        <widget class="QLineEdit" name="search_input">
-         <property name="placeholderText">
-          <string>Search packages...</string>
+        <widget class="QLabel" name="pageTitle">
+         <property name="text">
+          <string>Welcome to Apt-Ex Package Manager</string>
+         </property>
+         <property name="styleSheet">
+          <string>font-size: 24px; font-weight: bold; padding: 15px;</string>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>55</height>
+          </size>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QScrollArea" name="package_scroll_area">
-         <property name="widgetResizable">
-          <bool>true</bool>
+        <widget class="QStackedWidget" name="contentStack">
+         <property name="currentIndex">
+          <number>0</number>
          </property>
-         <widget class="QWidget" name="package_container">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>782</width>
-            <height>69</height>
-           </rect>
-          </property>
-         </widget>
         </widget>
        </item>
       </layout>
