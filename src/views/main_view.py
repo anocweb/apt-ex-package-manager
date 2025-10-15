@@ -77,6 +77,9 @@ class MainView(QMainWindow):
         # Set initial selection
         self.select_page('home', 0)
         self.load_initial_packages()
+        
+        # Connect settings panel buttons
+        self.connect_settings_buttons()
     
     def load_panels(self):
         """Load all panel UI files and add them to the content stack"""
@@ -178,6 +181,7 @@ class MainView(QMainWindow):
         elif page_key == 'updates':
             self.statusbar.showMessage("No updates available", 2000)
         elif page_key == 'settings':
+            self.populate_settings_panel()
             self.statusbar.showMessage("Settings panel", 2000)
         elif page_key == 'about':
             self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
@@ -256,3 +260,56 @@ class MainView(QMainWindow):
             if col >= 3:
                 col = 0
                 row += 1
+    
+    def populate_settings_panel(self):
+        """Populate settings panel with source data"""
+        from PyQt6.QtWidgets import QTreeWidgetItem
+        
+        settings_panel = self.panels['settings']
+        
+        # Populate Flatpak sources
+        flatpak_tree = settings_panel.flatpakSources
+        flatpak_tree.clear()
+        flatpak_item = QTreeWidgetItem(["✓ Flathub - dl.flathub.org"])
+        flatpak_tree.addTopLevelItem(flatpak_item)
+        flatpak_tree.setFixedHeight(flatpak_tree.sizeHintForRow(0) * flatpak_tree.topLevelItemCount() + 4)
+        settings_panel.flatpakNoSources.setVisible(False)
+        
+        # Populate APT sources
+        apt_tree = settings_panel.aptSources
+        apt_tree.clear()
+        apt_sources = [
+            "✓ downloads.1password.com/linux/debian/amd64 - Stable (main)",
+            "✓ brave-browser-apt-release.s3.brave.com - Stable (main)", 
+            "✓ ppa.launchpadcontent.net/danielrichter2007/grub-customizer/ubuntu - Questing (main)",
+            "✓ Ubuntu Questing (main universe restricted multiverse)",
+            "✓ Ubuntu Questing updates (main universe restricted multiverse)",
+            "✓ Ubuntu Questing backports (main universe restricted multiverse)",
+            "✓ Ubuntu Questing security (main universe restricted multiverse)",
+            "✓ packages.microsoft.com/repos/code - Stable (main)"
+        ]
+        for source in apt_sources:
+            item = QTreeWidgetItem([source])
+            apt_tree.addTopLevelItem(item)
+        apt_tree.setFixedHeight(apt_tree.sizeHintForRow(0) * apt_tree.topLevelItemCount() + 4)
+        settings_panel.aptNoSources.setVisible(False)
+        
+        # AppImage sources (empty - show no sources message)
+        appimage_tree = settings_panel.appimageSources
+        appimage_tree.clear()
+        appimage_tree.setVisible(False)
+        settings_panel.appimageNoSources.setVisible(True)
+    
+    def connect_settings_buttons(self):
+        """Connect settings panel button actions"""
+        if 'settings' in self.panels:
+            settings_panel = self.panels['settings']
+            settings_panel.aptSourcesBtn.clicked.connect(self.open_apt_sources)
+    
+    def open_apt_sources(self):
+        """Open /etc/apt/ folder in default file manager"""
+        import subprocess
+        try:
+            subprocess.run(['xdg-open', '/etc/apt/'], check=True)
+        except subprocess.CalledProcessError:
+            self.statusbar.showMessage("Could not open /etc/apt/ folder", 3000)

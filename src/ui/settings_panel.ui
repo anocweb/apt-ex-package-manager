@@ -12,17 +12,283 @@
   </property>
   <layout class="QVBoxLayout" name="settingsLayout">
    <property name="spacing">
-    <number>0</number>
+    <number>10</number>
    </property>
-
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
    <item>
-    <widget class="QLabel" name="settingsContent">
-     <property name="text">
-      <string>Settings panel coming soon...</string>
+    <widget class="QScrollArea" name="settingsScrollArea">
+     <property name="widgetResizable">
+      <bool>true</bool>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
      </property>
+     <widget class="QWidget" name="settingsContent">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>710</width>
+        <height>800</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <item>
+        <widget class="QWidget" name="flatpakSection" native="true">
+         <layout class="QVBoxLayout" name="flatpakSectionLayout">
+          <item>
+           <widget class="QWidget" name="flatpakHeader" native="true">
+            <layout class="QHBoxLayout" name="flatpakHeaderLayout">
+             <item>
+              <widget class="QLabel" name="flatpakTitle">
+               <property name="text">
+                <string>Flatpak</string>
+               </property>
+               <property name="styleSheet">
+                <string>font-weight: bold; font-size: 14px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="flatpakSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="makeDefaultFlatpak">
+               <property name="text">
+                <string>☆ Make Default</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="addFlatpakSource">
+               <property name="text">
+                <string>➕ Add Source...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTreeWidget" name="flatpakSources">
+            <property name="headerHidden">
+             <bool>true</bool>
+            </property>
+            <property name="rootIsDecorated">
+             <bool>false</bool>
+            </property>
+            <property name="verticalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+            <property name="horizontalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="flatpakNoSources">
+            <property name="text">
+             <string>No sources defined.</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="aptSection" native="true">
+         <layout class="QVBoxLayout" name="aptSectionLayout">
+          <item>
+           <widget class="QWidget" name="aptHeader" native="true">
+            <layout class="QHBoxLayout" name="aptHeaderLayout">
+             <item>
+              <widget class="QLabel" name="aptTitle">
+               <property name="text">
+                <string>APT</string>
+               </property>
+               <property name="styleSheet">
+                <string>font-weight: bold; font-size: 14px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="aptSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QLabel" name="aptDefaultLabel">
+               <property name="text">
+                <string>★ Default Source</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="aptSourcesBtn">
+               <property name="text">
+                <string>📦 Software Sources</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTreeWidget" name="aptSources">
+            <property name="headerHidden">
+             <bool>true</bool>
+            </property>
+            <property name="rootIsDecorated">
+             <bool>false</bool>
+            </property>
+            <property name="verticalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+            <property name="horizontalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="aptNoSources">
+            <property name="text">
+             <string>No sources defined.</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="appimageSection" native="true">
+         <layout class="QVBoxLayout" name="appimageSectionLayout">
+          <item>
+           <widget class="QWidget" name="appimageHeader" native="true">
+            <layout class="QHBoxLayout" name="appimageHeaderLayout">
+             <item>
+              <widget class="QLabel" name="appimageTitle">
+               <property name="text">
+                <string>AppImage</string>
+               </property>
+               <property name="styleSheet">
+                <string>font-weight: bold; font-size: 14px;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="appimageSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="addAppImageSource">
+               <property name="text">
+                <string>➕ Add Source...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTreeWidget" name="appimageSources">
+            <property name="headerHidden">
+             <bool>true</bool>
+            </property>
+            <property name="rootIsDecorated">
+             <bool>false</bool>
+            </property>
+            <property name="verticalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+            <property name="horizontalScrollBarPolicy">
+             <enum>Qt::ScrollBarAlwaysOff</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="appimageNoSources">
+            <property name="text">
+             <string>No sources defined.</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="visible">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
   </layout>
