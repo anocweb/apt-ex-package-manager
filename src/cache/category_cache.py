@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from ..models.category_model import CategoryModel, Category
+from models.category_model import CategoryModel, Category
 
 class CategoryCache:
     """Model-based cache system for package categories from different packaging systems"""

@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 from dataclasses import dataclass
-from ..cache.database import DatabaseManager
+from cache.database import DatabaseManager
 
 @dataclass
 class PackageCache:

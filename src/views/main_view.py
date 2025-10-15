@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow, QGridLayout, QLabel, QPushButton, QWidget
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QIcon
 from PyQt6 import uic
 from models.package_model import Package
@@ -16,6 +16,8 @@ class MainView(QMainWindow):
         self.content_layouts = {}
         self.panels = {}
         self.app_settings = AppSettings()
+        self.cache_updating = False
+        self.pending_action = None
         uic.loadUi('src/ui/main_window.ui', self)
         
         # Set window icon based on theme
@@ -116,6 +118,9 @@ class MainView(QMainWindow):
         
         # Connect settings panel buttons
         self.connect_settings_buttons()
+        
+        # Populate caches on startup
+        self.populate_caches_on_startup()
     
     def load_panels(self):
         """Load all panel UI files and add them to the content stack"""
@@ -232,6 +237,16 @@ class MainView(QMainWindow):
             self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
     
     def select_category(self, category):
+        # Check if cache is updating
+        if self.cache_updating:
+            self.statusbar.showMessage(f"Loading {category} packages after cache update...", 0)
+            self.pending_action = lambda: self._execute_category_selection(category)
+            return
+        
+        self._execute_category_selection(category)
+    
+    def _execute_category_selection(self, category):
+        """Execute category selection (used directly or after cache update)"""
         # Update button selection
         self.update_button_selection(category)
         
@@ -241,10 +256,41 @@ class MainView(QMainWindow):
         # Update page title for category
         self.pageTitle.setText(f"{category.title()} Packages")
         
-        # Load category packages using APT section mapping
-        from controllers.apt_controller import APTController
-        apt_controller = APTController()
-        self.current_packages = apt_controller.get_packages_by_sidebar_category(category)
+        # Load category packages from cache
+        from cache.package_cache import PackageCache
+        from models.package_cache_model import PackageCacheModel
+        
+        package_cache_model = PackageCacheModel()
+        
+        # Get section mapping for category
+        mapping = {
+            'games': ['games'],
+            'graphics': ['graphics'],
+            'internet': ['net', 'web', 'mail'],
+            'multimedia': ['sound', 'video'],
+            'office': ['editors', 'text', 'doc'],
+            'development': ['devel', 'libdevel', 'python', 'perl'],
+            'system': ['admin', 'base', 'kernel', 'shells'],
+            'utilities': ['utils', 'misc', 'otherosfs'],
+            'education': ['education', 'science'],
+            'accessibility': ['accessibility'],
+            'all': []
+        }
+        
+        sections = mapping.get(category, [])
+        self.current_packages = []
+        
+        if category == 'all':
+            # Get all packages
+            package_cache = PackageCache()
+            cached_packages = package_cache.get_packages('apt')
+            if cached_packages:
+                self.current_packages = cached_packages
+        else:
+            # Get packages by sections
+            for section in sections:
+                section_packages = package_cache_model.get_by_section('apt', section)
+                self.current_packages.extend(section_packages)
         self.update_category_display()
         self.statusbar.showMessage(f"Showing {category} packages", 2000)
     
@@ -279,7 +325,7 @@ class MainView(QMainWindow):
                 row += 1
     
     def update_category_display(self):
-        """Update category display with KDE Discover-style list items"""
+        """Update category display with cached packages"""
         category_panel = self.panels['category']
         layout = category_panel.packageListLayout
         
@@ -289,10 +335,18 @@ class MainView(QMainWindow):
             if child.widget():
                 child.widget().deleteLater()
         
-        # Add package list items
-        for package in self.current_packages[:20]:  # Show first 20
-            package_item = self.create_package_list_item(package)
-            layout.addWidget(package_item)
+        # Get packages from cache
+        from cache.package_cache import PackageCache
+        package_cache = PackageCache()
+        cached_packages = package_cache.get_packages('apt')
+        
+        if cached_packages:
+            # Filter by current category if needed
+            display_packages = cached_packages[:20]  # Show first 20
+            
+            for package in display_packages:
+                package_item = self.create_package_list_item(package)
+                layout.addWidget(package_item)
         
         # Add spacer at the end
         from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
@@ -440,6 +494,62 @@ class MainView(QMainWindow):
         """Update all available packages"""
         self.statusbar.showMessage("Updating all packages...", 3000)
     
+    def populate_caches_on_startup(self):
+        """Populate caches if empty or expired on application startup"""
+        from PyQt6.QtCore import QTimer
+        from cache.category_cache import CategoryCache
+        from cache.package_cache import PackageCache
+        from controllers.apt_controller import APTController
+        
+        category_cache = CategoryCache()
+        package_cache = PackageCache()
+        
+        # Check what needs updating
+        update_categories = not category_cache.is_cache_valid('apt')
+        update_packages = not package_cache.is_cache_valid('apt')
+        
+        if update_categories or update_packages:
+            self.cache_updating = True
+            
+            if update_categories and update_packages:
+                self.statusbar.showMessage("Updating package data...", 0)
+            elif update_categories:
+                self.statusbar.showMessage("Updating package categories...", 0)
+            else:
+                self.statusbar.showMessage("Updating package cache...", 0)
+            
+            # Use QTimer to update cache without blocking UI
+            def update_caches():
+                try:
+                    apt_controller = APTController()
+                    
+                    # Update categories if needed
+                    if update_categories:
+                        categories = apt_controller.get_section_details()
+                        category_cache.set_categories('apt', categories)
+                    
+                    # Update packages if needed
+                    if update_packages:
+                        self.statusbar.showMessage("Loading package details...", 0)
+                        packages = apt_controller.get_all_packages_for_cache()
+                        package_cache.set_packages('apt', packages)
+                    
+                    self.cache_updating = False
+                    self.statusbar.showMessage("Package data updated", 3000)
+                    
+                    # Execute pending action if any
+                    if self.pending_action:
+                        action = self.pending_action
+                        self.pending_action = None
+                        action()
+                        
+                except Exception as e:
+                    self.cache_updating = False
+                    self.statusbar.showMessage(f"Failed to update cache: {str(e)}", 5000)
+            
+            # Delay execution to allow UI to load first
+            QTimer.singleShot(100, update_caches)
+    
     def populate_category_list(self):
         """Populate the category list with cached APT sections"""
         from PyQt6.QtWidgets import QTreeWidgetItem
@@ -522,7 +632,8 @@ class MainView(QMainWindow):
         content_layout.addWidget(name_label)
         
         # Package description
-        desc_text = package.description[:80] + "..." if len(package.description) > 80 else package.description
+        description = getattr(package, 'description', '') or getattr(package, 'summary', '')
+        desc_text = description[:80] + "..." if len(description) > 80 else description
         desc_label = QLabel(desc_text)
         desc_label.setStyleSheet("font-size: 12px; color: palette(mid);")
         desc_label.setWordWrap(True)
@@ -557,6 +668,16 @@ class MainView(QMainWindow):
     
     def view_categories(self):
         """Show categories view"""
+        # Check if cache is updating
+        if self.cache_updating:
+            self.statusbar.showMessage("Loading categories after cache update...", 0)
+            self.pending_action = lambda: self._execute_view_categories()
+            return
+        
+        self._execute_view_categories()
+    
+    def _execute_view_categories(self):
+        """Execute view categories (used directly or after cache update)"""
         self.update_button_selection('categories')
         # Use category_list panel (index 4)
         panel_index = list(self.panels.keys()).index('category_list')

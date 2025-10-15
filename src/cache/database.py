@@ -83,3 +83,15 @@ class DatabaseManager:
             
             count = cursor.fetchone()[0]
             return count > 0
+    
+    def is_package_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
+        """Check if package cache is still valid"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute('''
+                SELECT COUNT(*) FROM package_cache 
+                WHERE backend = ? 
+                AND datetime(last_updated) > datetime('now', '-{} hours')
+            '''.format(max_age_hours), (backend,))
+            
+            count = cursor.fetchone()[0]
+            return count > 0

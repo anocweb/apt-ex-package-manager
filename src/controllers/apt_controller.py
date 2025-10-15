@@ -131,3 +131,47 @@ class APTController:
             return {}
         except Exception:
             return {}
+    
+    def get_all_packages_for_cache(self) -> List:
+        """Get all package details for caching"""
+        try:
+            import apt
+            cache = apt.Cache()
+            packages = []
+            
+            for package in cache:
+                if package.candidate:
+                    # Get basic package info
+                    pkg_data = {
+                        'backend': 'apt',
+                        'package_id': package.name,
+                        'name': package.name,
+                        'version': package.candidate.version,
+                        'description': package.candidate.description or '',
+                        'summary': package.candidate.summary or '',
+                        'section': package.candidate.section or '',
+                        'architecture': package.candidate.architecture or '',
+                        'size': getattr(package.candidate, 'size', 0),
+                        'installed_size': getattr(package.candidate, 'installed_size', 0),
+                        'maintainer': getattr(package.candidate.record, 'get', lambda x, y: '')('Maintainer', ''),
+                        'homepage': getattr(package.candidate.record, 'get', lambda x, y: '')('Homepage', ''),
+                        'metadata': {}
+                    }
+                    
+                    # Add APT-specific metadata
+                    if hasattr(package.candidate, 'record') and package.candidate.record:
+                        record = package.candidate.record
+                        if 'Depends' in record:
+                            pkg_data['metadata']['depends'] = record['Depends']
+                        if 'Conflicts' in record:
+                            pkg_data['metadata']['conflicts'] = record['Conflicts']
+                        if 'Priority' in record:
+                            pkg_data['metadata']['priority'] = record['Priority']
+                    
+                    packages.append(pkg_data)
+            
+            return packages
+        except ImportError:
+            return []
+        except Exception:
+            return []
