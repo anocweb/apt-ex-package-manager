@@ -3,12 +3,14 @@ from .base_repository import BaseRepository, RepositorySource
 from .apt_repository import AptRepository
 from .flatpak_repository import FlatpakRepository
 from .appimage_repository import AppImageRepository
+from ..cache.category_cache import CategoryCache
 
 class RepositoryManager:
     """Manages all repository implementations"""
     
     def __init__(self):
         self._repositories: Dict[str, BaseRepository] = {}
+        self.category_cache = CategoryCache()
         self._load_repositories()
     
     def _load_repositories(self):
@@ -100,6 +102,41 @@ class RepositoryManager:
                 'supports_system_scope': repo.supports_system_scope()
             }
         return {}
+    
+    def get_categories(self, repo_name: str, force_refresh: bool = False) -> List[str]:
+        """Get categories for specific repository with caching"""
+        if not force_refresh:
+            cached_categories = self.category_cache.get_categories(repo_name)
+            if cached_categories is not None:
+                return cached_categories
+        
+        # Fetch categories from repository
+        repo = self.get_repository(repo_name)
+        if repo and hasattr(repo, 'get_categories'):
+            try:
+                categories = repo.get_categories()
+                self.category_cache.set_categories(repo_name, categories)
+                return categories
+            except Exception:
+                pass
+        
+        # Return cached data if available, even if stale
+        return self.category_cache.get_categories(repo_name) or []
+    
+    def get_all_categories(self, force_refresh: bool = False) -> Dict[str, List[str]]:
+        """Get categories from all repositories"""
+        all_categories = {}
+        
+        for repo_name in self._repositories.keys():
+            categories = self.get_categories(repo_name, force_refresh)
+            if categories:
+                all_categories[repo_name] = categories
+        
+        return all_categories
+    
+    def clear_category_cache(self, repo_name: Optional[str] = None):
+        """Clear category cache for specific repository or all"""
+        self.category_cache.clear_cache(repo_name)
     
     def refresh_all(self):
         """Refresh all repository data"""

@@ -51,6 +51,7 @@
 - **Manager Injection**: Pass package manager instance to view constructor
 - **Widget Access**: Direct access to UI elements by name (e.g., `self.install_button`)
 - **Backend Indicators**: Visual badges showing package source (APT/Flatpak/AppImage)
+- **Context Actions**: Use header action area for page-specific buttons
 
 ### Event Handling
 - **Button Clicks**: Connect to controller methods via view wrapper methods
@@ -81,6 +82,15 @@ def main():
 def setup_ui(self):
     self.install_button.clicked.connect(self.install_package)
     self.remove_button.clicked.connect(self.remove_package)
+```
+
+### Context Actions Pattern
+```python
+def select_page(self, page_key, page_index):
+    self.clear_context_actions()
+    if page_key == 'updates':
+        self.add_context_action("🔄 Refresh", self.refresh_updates)
+        self.add_context_action("⬆️ Update All", self.update_all)
 ```
 
 ### List Widget Population
@@ -122,6 +132,7 @@ def __str__(self):
 - **Controller Delegation**: Delegate all business logic to controllers
 - **State Synchronization**: Update UI after controller operations
 - **Widget Management**: Direct manipulation of Qt6 widgets
+- **Context Actions**: Each page defines relevant header actions using `add_context_action()`
 
 ## Development Standards
 

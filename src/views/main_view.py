@@ -177,6 +177,9 @@ class MainView(QMainWindow):
         }
         self.pageTitle.setText(page_titles.get(page_key, 'Apt-Ex Package Manager'))
         
+        # Clear previous context actions
+        self.clear_context_actions()
+        
         # Load content based on page
         if page_key == 'home':
             self.current_packages = self.package_manager.get_installed_packages()[:6]
@@ -187,6 +190,7 @@ class MainView(QMainWindow):
             self.update_installed_display()
             self.statusbar.showMessage("Showing installed packages", 2000)
         elif page_key == 'updates':
+            self.setup_updates_context_actions()
             self.statusbar.showMessage("No updates available", 2000)
         elif page_key == 'settings':
             self.populate_settings_panel()
@@ -380,3 +384,33 @@ class MainView(QMainWindow):
         self.app_settings.set_window_geometry(self.saveGeometry())
         self.app_settings.set_window_state(self.saveState())
         event.accept()
+    
+    def clear_context_actions(self):
+        """Clear all context action buttons"""
+        layout = self.contextActions.layout()
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+    
+    def add_context_action(self, text: str, callback):
+        """Add a context action button"""
+        from PyQt6.QtWidgets import QPushButton
+        button = QPushButton(text)
+        button.setFixedHeight(30)
+        button.clicked.connect(callback)
+        self.contextActions.layout().addWidget(button)
+        return button
+    
+    def setup_updates_context_actions(self):
+        """Setup context actions for updates page"""
+        self.add_context_action("🔄 Refresh", self.refresh_updates)
+        self.add_context_action("⬆️ Update All", self.update_all_packages)
+    
+    def refresh_updates(self):
+        """Refresh available updates"""
+        self.statusbar.showMessage("Refreshing updates...", 2000)
+    
+    def update_all_packages(self):
+        """Update all available packages"""
+        self.statusbar.showMessage("Updating all packages...", 3000)

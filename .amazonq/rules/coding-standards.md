@@ -26,6 +26,13 @@
 - Minimize external dependencies
 - Document any system requirements
 
+## Context Actions
+- Use header context actions for page-specific functionality
+- Clear actions when switching pages with `clear_context_actions()`
+- Add actions with `add_context_action(text, callback)`
+- Limit to 3-4 buttons maximum for clean interface
+- Use emoji icons and concise text for buttons
+
 ## Documentation Synchronization
 - When updating docs/FEATURES.md or docs/DESIGN_GUIDELINES.md, reflect changes in corresponding Amazon Q rules
 - Keep .amazonq/rules/ files aligned with project documentation

@@ -1,6 +1,7 @@
 import subprocess
 from typing import List
 from .base_repository import BaseRepository, RepositorySource
+from cache.category_cache import CategoryCache
 
 class AptRepository(BaseRepository):
     """APT repository implementation"""
@@ -101,3 +102,45 @@ class AptRepository(BaseRepository):
     
     def supports_system_scope(self) -> bool:
         return True
+    
+    def get_categories(self) -> List[str]:
+        """Get package categories from debtags with caching"""
+        if not self.is_available:
+            return []
+        
+        # Try cache first
+        cache = CategoryCache()
+        cached_categories = cache.get_categories('apt')
+        if cached_categories is not None:
+            return cached_categories
+        
+        # Collect from debtags
+        categories = self._collect_debtags_categories()
+        
+        # Cache the results
+        if categories:
+            cache.set_categories('apt', categories)
+        
+        return categories
+    
+    def _collect_debtags_categories(self) -> List[str]:
+        """Collect categories from debtags using Python apt library"""
+        try:
+            import apt
+            cache = apt.Cache()
+            categories = set()
+            
+            for package in cache:
+                if hasattr(package.candidate, 'record') and package.candidate.record:
+                    debtags = package.candidate.record.get('Tag', '')
+                    if debtags:
+                        for tag in debtags.split(','):
+                            tag = tag.strip()
+                            if '::' in tag:
+                                category = tag.split('::')[0].strip()
+                                if category:
+                                    categories.add(category)
+            
+            return sorted(list(categories))
+        except Exception:
+            return []

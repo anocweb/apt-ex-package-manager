@@ -77,3 +77,7 @@ class BaseRepository(ABC):
     def supports_system_scope(self) -> bool:
         """Whether this repository type supports system-level sources"""
         return True
+    
+    def get_categories(self) -> List[str]:
+        """Get available package categories (override in subclasses)"""
+        return []
