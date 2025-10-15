@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/category_panel.ui'
+# Form implementation generated from reading ui file 'category_panel.ui'
 #
 # Created by: PyQt6 UI code generator 6.9.1
 #
@@ -14,14 +14,20 @@ class Ui_CategoryPanel(object):
         CategoryPanel.setObjectName("CategoryPanel")
         CategoryPanel.resize(750, 600)
         self.categoryLayout = QtWidgets.QVBoxLayout(CategoryPanel)
+        self.categoryLayout.setContentsMargins(0, 0, 0, 0)
         self.categoryLayout.setSpacing(0)
         self.categoryLayout.setObjectName("categoryLayout")
         self.categoryScrollArea = QtWidgets.QScrollArea(parent=CategoryPanel)
         self.categoryScrollArea.setWidgetResizable(True)
+        self.categoryScrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.categoryScrollArea.setObjectName("categoryScrollArea")
         self.categoryContainer = QtWidgets.QWidget()
-        self.categoryContainer.setGeometry(QtCore.QRect(0, 0, 782, 69))
+        self.categoryContainer.setGeometry(QtCore.QRect(0, 0, 750, 600))
         self.categoryContainer.setObjectName("categoryContainer")
+        self.packageListLayout = QtWidgets.QVBoxLayout(self.categoryContainer)
+        self.packageListLayout.setContentsMargins(10, 10, 10, 10)
+        self.packageListLayout.setSpacing(2)
+        self.packageListLayout.setObjectName("packageListLayout")
         self.categoryScrollArea.setWidget(self.categoryContainer)
         self.categoryLayout.addWidget(self.categoryScrollArea)
 

@@ -21,16 +21,20 @@
 - **flatpak**: Flatpak system integration via subprocess
 - **appimage**: AppImage file management and integration
 - **subprocess**: System command execution for all backends
-- **sys**: System-specific parameters and functions
+- **sqlite3**: SQLite database for caching and persistence
 
 ### Complete Dependency List
 ```
 PyQt6
 apt
+sqlite3   # Database for caching (built-in)
 subprocess
 sys
 requests  # For AppImage metadata and updates
 os        # File system operations for AppImage
+pathlib   # Path handling for cache directories
+dataclasses # Type-safe data models
+typing    # Type hints and annotations
 ```
 
 ## Development Environment
@@ -73,6 +77,8 @@ designer src/ui/main_window.ui
 - **Threading**: Asynchronous operations to prevent UI freezing
 - **Process Management**: Safe subprocess execution for APT commands
 - **File System**: Configuration storage in `~/.config/apt-ex-package-manager/`
+- **Database**: SQLite cache in `~/.cache/apt-ex-package-manager/cache.db`
+- **Caching**: 24-hour TTL with automatic validation and refresh
 
 ### Security Technologies
 - **Input Validation**: All user inputs sanitized
@@ -101,3 +107,5 @@ designer src/ui/main_window.ui
 - System color scheme integration
 - Desktop file associations
 - Command-line interface compatibility
+- SQLite database for offline functionality
+- Persistent caching across application restarts

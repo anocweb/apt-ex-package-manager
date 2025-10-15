@@ -103,27 +103,28 @@ class RepositoryManager:
             }
         return {}
     
-    def get_categories(self, repo_name: str, force_refresh: bool = False) -> List[str]:
+    def get_categories(self, repo_name: str, force_refresh: bool = False) -> Dict:
         """Get categories for specific repository with caching"""
         if not force_refresh:
             cached_categories = self.category_cache.get_categories(repo_name)
             if cached_categories is not None:
                 return cached_categories
         
-        # Fetch categories from repository
+        # Fetch fresh categories from repository
         repo = self.get_repository(repo_name)
         if repo and hasattr(repo, 'get_categories'):
             try:
                 categories = repo.get_categories()
-                self.category_cache.set_categories(repo_name, categories)
-                return categories
+                if categories:
+                    self.category_cache.set_categories(repo_name, categories)
+                    return categories
             except Exception:
                 pass
         
         # Return cached data if available, even if stale
-        return self.category_cache.get_categories(repo_name) or []
+        return self.category_cache.get_categories(repo_name) or {}
     
-    def get_all_categories(self, force_refresh: bool = False) -> Dict[str, List[str]]:
+    def get_all_categories(self, force_refresh: bool = False) -> Dict[str, Dict]:
         """Get categories from all repositories"""
         all_categories = {}
         

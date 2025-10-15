@@ -103,25 +103,14 @@ class AptRepository(BaseRepository):
     def supports_system_scope(self) -> bool:
         return True
     
-    def get_categories(self) -> List[str]:
-        """Get package categories from debtags with caching"""
+    def get_categories(self) -> Dict:
+        """Get package categories from sections"""
         if not self.is_available:
-            return []
+            return {}
         
-        # Try cache first
-        cache = CategoryCache()
-        cached_categories = cache.get_categories('apt')
-        if cached_categories is not None:
-            return cached_categories
-        
-        # Collect from sections
-        categories = self._collect_apt_sections()
-        
-        # Cache the results
-        if categories:
-            cache.set_categories('apt', categories)
-        
-        return categories
+        from ..controllers.apt_controller import APTController
+        apt_controller = APTController()
+        return apt_controller.get_section_details()
     
     def _collect_apt_sections(self) -> List[str]:
         """Collect categories from APT sections"""

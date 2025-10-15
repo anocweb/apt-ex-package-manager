@@ -279,20 +279,25 @@ class MainView(QMainWindow):
                 row += 1
     
     def update_category_display(self):
-        layout = self.content_layouts['category']
-        # Clear existing widgets
-        for i in reversed(range(layout.count())):
-            layout.itemAt(i).widget().setParent(None)
+        """Update category display with KDE Discover-style list items"""
+        category_panel = self.panels['category']
+        layout = category_panel.packageListLayout
         
-        # Add package cards
-        row, col = 0, 0
-        for package in self.current_packages[:20]:
-            card = self.create_package_card(package)
-            layout.addWidget(card, row, col)
-            col += 1
-            if col >= 3:
-                col = 0
-                row += 1
+        # Clear existing items
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        # Add package list items
+        for package in self.current_packages[:20]:  # Show first 20
+            package_item = self.create_package_list_item(package)
+            layout.addWidget(package_item)
+        
+        # Add spacer at the end
+        from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        layout.addItem(spacer)
     
     def populate_settings_panel(self):
         """Populate settings panel with source data"""
@@ -436,17 +441,24 @@ class MainView(QMainWindow):
         self.statusbar.showMessage("Updating all packages...", 3000)
     
     def populate_category_list(self):
-        """Populate the category list with hierarchical APT sections"""
+        """Populate the category list with cached APT sections"""
         from PyQt6.QtWidgets import QTreeWidgetItem
+        from cache.category_cache import CategoryCache
         from controllers.apt_controller import APTController
         
         category_panel = self.panels['category_list']
         tree = category_panel.categoryTree
         tree.clear()
         
-        # Get section details from APT controller
-        apt_controller = APTController()
-        section_details = apt_controller.get_section_details()
+        # Get cached categories or fetch fresh data
+        cache = CategoryCache()
+        section_details = cache.get_categories('apt')
+        
+        if section_details is None:
+            # Cache miss - fetch fresh data
+            apt_controller = APTController()
+            section_details = apt_controller.get_section_details()
+            cache.set_categories('apt', section_details)
         
         for section, data in sorted(section_details.items()):
             if isinstance(data, dict):
@@ -466,6 +478,82 @@ class MainView(QMainWindow):
         
         # Expand all categories by default
         tree.expandAll()
+    
+    def create_package_list_item(self, package):
+        """Create a KDE Discover-style package list item"""
+        from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame
+        from PyQt6.QtCore import Qt
+        
+        # Main container
+        item_widget = QFrame()
+        item_widget.setFrameStyle(QFrame.Shape.Box)
+        item_widget.setStyleSheet("""
+            QFrame {
+                background-color: palette(base);
+                border: 1px solid palette(mid);
+                border-radius: 8px;
+                padding: 8px;
+                margin: 2px;
+            }
+            QFrame:hover {
+                background-color: palette(alternate-base);
+            }
+        """)
+        item_widget.setFixedHeight(80)
+        
+        # Main horizontal layout
+        main_layout = QHBoxLayout(item_widget)
+        main_layout.setSpacing(12)
+        
+        # Icon placeholder
+        icon_label = QLabel("📦")
+        icon_label.setFixedSize(48, 48)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px;")
+        main_layout.addWidget(icon_label)
+        
+        # Content area
+        content_layout = QVBoxLayout()
+        content_layout.setSpacing(2)
+        
+        # Package name
+        name_label = QLabel(package.name)
+        name_label.setStyleSheet("font-size: 16px; font-weight: bold; color: palette(text);")
+        content_layout.addWidget(name_label)
+        
+        # Package description
+        desc_text = package.description[:80] + "..." if len(package.description) > 80 else package.description
+        desc_label = QLabel(desc_text)
+        desc_label.setStyleSheet("font-size: 12px; color: palette(mid);")
+        desc_label.setWordWrap(True)
+        content_layout.addWidget(desc_label)
+        
+        # Rating placeholder (stars)
+        rating_label = QLabel("★★★★☆ 4.2 ratings")
+        rating_label.setStyleSheet("font-size: 11px; color: palette(mid);")
+        content_layout.addWidget(rating_label)
+        
+        main_layout.addLayout(content_layout)
+        
+        # Right side - Install button
+        install_btn = QPushButton("⬇ Install")
+        install_btn.setFixedSize(80, 32)
+        install_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3daee9;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        install_btn.clicked.connect(lambda: self.install_package(package.name))
+        main_layout.addWidget(install_btn)
+        
+        return item_widget
     
     def view_categories(self):
         """Show categories view"""

@@ -60,11 +60,12 @@
 - **List Updates**: Clear and repopulate list widgets for data refresh
 
 ### Data Flow Patterns (Multi-Backend)
-- **View → Manager**: Views call package manager for unified operations
-- **Manager → Backend**: Manager delegates to appropriate backend controller
-- **Backend → Model**: Backend controllers create unified package models
-- **Model → View**: Views display unified package data with backend indicators
-- **State Management**: Package manager maintains cross-backend state
+- **View → Cache**: Views check cache first for fast data access
+- **Cache → Controller**: Cache miss triggers fresh data fetch
+- **Controller → Backend**: Controllers delegate to appropriate backend
+- **Backend → Model**: Backend data converted to unified models
+- **Model → Cache**: Fresh data stored in SQLite cache
+- **Cache → View**: Cached data displayed with backend indicators
 
 ## Common Code Idioms
 
@@ -122,9 +123,11 @@ def __str__(self):
 - **Error Translation**: Convert backend errors to unified format
 
 ### Model Design
-- **Data Containers**: Models primarily hold and manipulate data
+- **Data Models**: Dataclasses for type-safe data structures
+- **CRUD Models**: Database operations with proper error handling
+- **Cache Models**: High-level caching interfaces
 - **Initialization**: Constructor takes all required data parameters
-- **Update Methods**: Provide methods to modify data state
+- **Database Operations**: Create, read, update, delete with transactions
 - **Serialization**: Implement `__str__` for display purposes
 
 ### View Design
@@ -142,10 +145,19 @@ def __str__(self):
 - **Relative Imports**: Use relative imports within package structure
 - **Path References**: Use relative paths for UI file loading
 
+### Database and Caching Patterns
+- **Cache First**: Always check cache before fetching fresh data
+- **TTL Validation**: Automatic cache expiration and validation
+- **Graceful Fallback**: Use stale cache data if fresh fetch fails
+- **Transaction Safety**: Use context managers for database operations
+- **Schema Evolution**: Design for future schema migrations
+
 ### Error Handling Preparation
+- **Database Errors**: Handle SQLite exceptions gracefully
+- **Cache Misses**: Automatic fallback to fresh data fetching
+- **Transaction Rollback**: Ensure data consistency on failures
 - **Placeholder Methods**: Use `pass` for unimplemented methods
 - **Comment Stubs**: Mark incomplete implementations with descriptive comments
-- **Future-Proofing**: Structure code for easy addition of error handling
 
 ### Testing Considerations
 - **Method Isolation**: Design methods for easy unit testing

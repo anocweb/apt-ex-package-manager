@@ -23,22 +23,37 @@ src/
 │   └── appimage_controller.py # AppImage backend implementation
 ├── models/                 # Data structures and state management
 │   ├── package_model.py    # Unified package data representation
-│   └── backend_model.py    # Package backend abstraction
+│   ├── category_model.py   # Category CRUD operations
+│   └── package_cache_model.py # Package cache CRUD operations
+├── cache/                  # SQLite-based caching system
+│   ├── database.py         # Database manager and schema
+│   └── category_cache.py   # Category caching interface
+├── repositories/           # Repository management
+│   ├── base_repository.py  # Repository interface
+│   ├── apt_repository.py   # APT repository implementation
+│   ├── flatpak_repository.py # Flatpak repository implementation
+│   ├── appimage_repository.py # AppImage repository implementation
+│   └── repository_manager.py # Multi-repository coordinator
+├── settings/               # Application settings
+│   └── app_settings.py     # Settings management
 ├── views/                  # UI display and user interactions
-│   ├── main_view.py        # Main window (Discover-style)
-│   ├── package_card.py     # Package card component
-│   └── detail_view.py      # Package detail overlay
+│   └── main_view.py        # Main window (Discover-style)
 └── ui/                     # Qt Designer UI files
     ├── main_window.ui      # Main window layout
-    ├── package_card.ui     # Package card template
-    └── detail_view.ui      # Package detail template
+    ├── category_panel.ui   # Category browsing panel
+    ├── category_list_panel.ui # Category tree panel
+    └── [other panels].ui   # Additional UI panels
 ```
 
 ### Documentation Structure (`docs/`)
 ```
 docs/
 ├── FEATURES.md             # Feature requirements and specifications
-└── DESIGN_GUIDELINES.md    # KDE Plasma 6 integration guidelines
+├── DESIGN_GUIDELINES.md    # KDE Plasma 6 integration guidelines
+├── CONTEXT_ACTIONS.md      # Context actions system documentation
+├── DATABASE_ARCHITECTURE.md # SQLite database schema and design
+├── CACHING_SYSTEM.md       # Caching strategy and implementation
+└── REPOSITORY_IMPLEMENTATION.md # Repository management system
 ```
 
 ### Configuration Structure (`.amazonq/rules/`)
@@ -84,13 +99,27 @@ docs/
 
 ### Package Management
 - `package_manager.py`: Unified interface coordinating all backends
-- `apt_controller.py`: APT command execution and privilege handling
+- `apt_controller.py`: APT command execution and section-based categorization
 - `flatpak_controller.py`: Flatpak operations and remote management
 - `appimage_controller.py`: AppImage integration and file management
 - `package_model.py`: Unified package data structures
-- `backend_model.py`: Backend abstraction and capability definition
+
+### Data Management
+- `database.py`: SQLite database manager with schema initialization
+- `category_model.py`: CRUD operations for category cache
+- `package_cache_model.py`: CRUD operations for package cache
+- `category_cache.py`: High-level caching interface for categories
+
+### Repository System
+- `repository_manager.py`: Multi-backend repository coordinator
+- `base_repository.py`: Abstract repository interface
+- `apt_repository.py`: APT repository and source management
+- `flatpak_repository.py`: Flatpak remote management
+- `appimage_repository.py`: AppImage source management
 
 ### Configuration Management
 - Settings stored in `~/.config/apt-ex-package-manager/`
+- Cache database in `~/.cache/apt-ex-package-manager/cache.db`
 - Qt6 QSettings for preference management
 - System theme and accessibility integration
+- SQLite database for persistent caching
