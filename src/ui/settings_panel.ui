@@ -155,9 +155,9 @@
               </spacer>
              </item>
              <item>
-              <widget class="QLabel" name="aptDefaultLabel">
+              <widget class="QPushButton" name="makeDefaultApt">
                <property name="text">
-                <string>★ Default Source</string>
+                <string>★ Default</string>
                </property>
               </widget>
              </item>
@@ -237,6 +237,9 @@
                <property name="text">
                 <string>➕ Add Source...</string>
                </property>
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
               </widget>
              </item>
             </layout>
@@ -261,7 +264,7 @@
           <item>
            <widget class="QLabel" name="appimageNoSources">
             <property name="text">
-             <string>No sources defined.</string>
+             <string>Not implemented yet!</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>

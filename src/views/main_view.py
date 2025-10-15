@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QMainWindow, QGridLayout, QLabel, QPushButton, QWidg
 from PyQt6.QtCore import Qt
 from PyQt6 import uic
 from models.package_model import Package
+from settings.app_settings import AppSettings
 import os
 
 class MainView(QMainWindow):
@@ -13,9 +14,11 @@ class MainView(QMainWindow):
         self.sidebar_buttons = {}
         self.content_layouts = {}
         self.panels = {}
+        self.app_settings = AppSettings()
         uic.loadUi('src/ui/main_window.ui', self)
         self.load_panels()
         self.setup_ui()
+        self.restore_window_state()
 
     def setup_ui(self):
         # Setup content layouts from loaded panels
@@ -74,8 +77,10 @@ class MainView(QMainWindow):
         self.systemBtn.clicked.connect(lambda: self.select_category('system'))
         self.utilitiesBtn.clicked.connect(lambda: self.select_category('utilities'))
         
-        # Set initial selection
-        self.select_page('home', 0)
+        # Set initial selection to last used page
+        last_page = self.app_settings.get_last_selected_page()
+        page_indices = {'home': 0, 'installed': 1, 'updates': 2, 'category': 3, 'settings': 4, 'about': 5}
+        self.select_page(last_page, page_indices.get(last_page, 0))
         self.load_initial_packages()
         
         # Connect settings panel buttons
@@ -159,6 +164,9 @@ class MainView(QMainWindow):
         # Switch to the appropriate page
         self.contentStack.setCurrentIndex(page_index)
         
+        # Save last selected page
+        self.app_settings.set_last_selected_page(page_key)
+        
         # Update page title
         page_titles = {
             'home': 'Welcome to Apt-Ex Package Manager',
@@ -182,6 +190,7 @@ class MainView(QMainWindow):
             self.statusbar.showMessage("No updates available", 2000)
         elif page_key == 'settings':
             self.populate_settings_panel()
+            self.update_default_repository_ui()
             self.statusbar.showMessage("Settings panel", 2000)
         elif page_key == 'about':
             self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
@@ -305,6 +314,16 @@ class MainView(QMainWindow):
         if 'settings' in self.panels:
             settings_panel = self.panels['settings']
             settings_panel.aptSourcesBtn.clicked.connect(self.open_apt_sources)
+            
+            # Connect default repository buttons
+            if hasattr(settings_panel, 'makeDefaultFlatpak'):
+                settings_panel.makeDefaultFlatpak.clicked.connect(
+                    lambda: self.set_default_repository('flatpak')
+                )
+            if hasattr(settings_panel, 'makeDefaultApt'):
+                settings_panel.makeDefaultApt.clicked.connect(
+                    lambda: self.set_default_repository('apt')
+                )
     
     def open_apt_sources(self):
         """Open /etc/apt/ folder in default file manager"""
@@ -313,3 +332,51 @@ class MainView(QMainWindow):
             subprocess.run(['xdg-open', '/etc/apt/'], check=True)
         except subprocess.CalledProcessError:
             self.statusbar.showMessage("Could not open /etc/apt/ folder", 3000)
+    
+    def set_default_repository(self, repo_type: str):
+        """Set default repository type"""
+        self.app_settings.set_default_repository(repo_type)
+        self.update_default_repository_ui()
+        self.statusbar.showMessage(f"Set {repo_type.upper()} as default repository", 3000)
+    
+    def update_default_repository_ui(self):
+        """Update UI to reflect default repository setting"""
+        if 'settings' not in self.panels:
+            return
+            
+        settings_panel = self.panels['settings']
+        default_repo = self.app_settings.get_default_repository()
+        
+        # Update Flatpak button
+        if hasattr(settings_panel, 'makeDefaultFlatpak'):
+            if default_repo == 'flatpak':
+                settings_panel.makeDefaultFlatpak.setText('★ Default')
+                settings_panel.makeDefaultFlatpak.setEnabled(False)
+            else:
+                settings_panel.makeDefaultFlatpak.setText('☆ Make Default')
+                settings_panel.makeDefaultFlatpak.setEnabled(True)
+        
+        # Update APT button
+        if hasattr(settings_panel, 'makeDefaultApt'):
+            if default_repo == 'apt':
+                settings_panel.makeDefaultApt.setText('★ Default')
+                settings_panel.makeDefaultApt.setEnabled(False)
+            else:
+                settings_panel.makeDefaultApt.setText('☆ Make Default')
+                settings_panel.makeDefaultApt.setEnabled(True)
+    
+    def restore_window_state(self):
+        """Restore window geometry and state from settings"""
+        geometry = self.app_settings.get_window_geometry()
+        if geometry:
+            self.restoreGeometry(geometry)
+        
+        state = self.app_settings.get_window_state()
+        if state:
+            self.restoreState(state)
+    
+    def closeEvent(self, event):
+        """Save window state when closing"""
+        self.app_settings.set_window_geometry(self.saveGeometry())
+        self.app_settings.set_window_state(self.saveState())
+        event.accept()
