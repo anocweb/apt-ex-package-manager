@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QGridLayout, QLabel, QPushButton, QWidget
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
 from PyQt6 import uic
 from models.package_model import Package
 from settings.app_settings import AppSettings
@@ -16,6 +17,32 @@ class MainView(QMainWindow):
         self.panels = {}
         self.app_settings = AppSettings()
         uic.loadUi('src/ui/main_window.ui', self)
+        
+        # Set window icon based on theme
+        def get_icon_path():
+            base_path = os.path.join(os.path.dirname(__file__), '..', 'icons')
+            # Check if dark theme is active
+            palette = self.palette()
+            is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
+            
+            if is_dark:
+                dark_icon = os.path.join(base_path, 'app-icon-dark.svg')
+                if os.path.exists(dark_icon):
+                    return dark_icon
+            
+            # Fallback to light icon
+            return os.path.join(base_path, 'app-icon.svg')
+        
+        icon_path = get_icon_path()
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            # Add multiple sizes to ensure proper scaling
+            icon.addFile(icon_path, QSize(16, 16))
+            icon.addFile(icon_path, QSize(32, 32))
+            icon.addFile(icon_path, QSize(48, 48))
+            icon.addFile(icon_path, QSize(64, 64))
+            self.setWindowIcon(icon)
+        
         self.load_panels()
         self.setup_ui()
         self.restore_window_state()
