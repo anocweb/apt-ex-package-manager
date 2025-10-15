@@ -248,6 +248,13 @@ QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</strin
          </property>
         </spacer>
        </item>
+       <item>
+        <widget class="QPushButton" name="viewCategoriesBtn">
+         <property name="text">
+          <string>📂 View Categories</string>
+         </property>
+        </widget>
+       </item>
           </layout>
          </widget>
         </widget>

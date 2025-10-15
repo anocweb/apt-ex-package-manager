@@ -28,53 +28,69 @@ class APTController:
             Package("git", "2.34", "Version control")
         ]
     
-    def get_categories_from_debtags(self) -> List[str]:
-        """Collect categories from debtags using Python apt library"""
+    def get_categories_from_sections(self) -> List[str]:
+        """Collect categories from APT sections"""
         try:
             import apt
             cache = apt.Cache()
-            categories: Set[str] = set()
+            sections: Set[str] = set()
             
             for package in cache:
-                if hasattr(package.candidate, 'record') and package.candidate.record:
-                    # Get debtags from package record
-                    debtags = package.candidate.record.get('Tag', '')
-                    if debtags:
-                        # Parse debtags - format is "category::subcategory, category2::subcategory2"
-                        for tag in debtags.split(','):
-                            tag = tag.strip()
-                            if '::' in tag:
-                                category = tag.split('::')[0].strip()
-                                if category:
-                                    categories.add(category)
+                if hasattr(package.candidate, 'section') and package.candidate.section:
+                    sections.add(package.candidate.section)
             
-            return sorted(list(categories))
+            return sorted(list(sections))
         except ImportError:
             return []
         except Exception:
             return []
     
-    def get_packages_by_category(self, category: str) -> List[Package]:
-        """Get packages that belong to a specific debtag category"""
+    def get_section_to_sidebar_mapping(self) -> dict:
+        """Map APT sections to sidebar categories"""
+        return {
+            'games': ['games'],
+            'graphics': ['graphics'],
+            'internet': ['net', 'web', 'mail'],
+            'multimedia': ['sound', 'video'],
+            'office': ['editors', 'text', 'doc'],
+            'development': ['devel', 'libdevel', 'python', 'perl'],
+            'system': ['admin', 'base', 'kernel', 'shells'],
+            'utilities': ['utils', 'misc', 'otherosfs'],
+            'education': ['education', 'science'],
+            'accessibility': ['accessibility'],
+            'all': []  # Special case for all packages
+        }
+    
+    def get_packages_by_sidebar_category(self, sidebar_category: str) -> List[Package]:
+        """Get packages for a sidebar category by mapping to APT sections"""
+        mapping = self.get_section_to_sidebar_mapping()
+        apt_sections = mapping.get(sidebar_category, [])
+        
+        if sidebar_category == 'all':
+            # Return all packages
+            return self.get_installed_packages()
+        
+        all_packages = []
+        for section in apt_sections:
+            packages = self.get_packages_by_section(section)
+            all_packages.extend(packages)
+        
+        return all_packages
+    
+    def get_packages_by_section(self, section: str) -> List[Package]:
+        """Get packages that belong to a specific APT section"""
         try:
             import apt
             cache = apt.Cache()
             packages = []
             
             for package in cache:
-                if hasattr(package.candidate, 'record') and package.candidate.record:
-                    debtags = package.candidate.record.get('Tag', '')
-                    if debtags and category in debtags:
-                        # Check if category matches exactly (not just substring)
-                        for tag in debtags.split(','):
-                            tag = tag.strip()
-                            if tag.startswith(f"{category}::"):
-                                packages.append(Package(
-                                    name=package.name,
-                                    version=package.candidate.version if package.candidate else "unknown",
-                                    description=package.candidate.summary if package.candidate else ""
-                                ))
-                                break
+                if hasattr(package.candidate, 'section') and package.candidate.section == section:
+                    packages.append(Package(
+                        name=package.name,
+                        version=package.candidate.version if package.candidate else "unknown",
+                        description=package.candidate.summary if package.candidate else ""
+                    ))
             
             return packages
         except ImportError:
@@ -82,30 +98,35 @@ class APTController:
         except Exception:
             return []
     
-    def get_category_details(self) -> dict:
-        """Get detailed category information with subcategories from debtags"""
+    def get_section_details(self) -> dict:
+        """Get section information parsed into hierarchical categories"""
         try:
             import apt
             cache = apt.Cache()
-            category_details = {}
+            section_details = {}
             
             for package in cache:
-                if hasattr(package.candidate, 'record') and package.candidate.record:
-                    debtags = package.candidate.record.get('Tag', '')
-                    if debtags:
-                        for tag in debtags.split(','):
-                            tag = tag.strip()
-                            if '::' in tag:
-                                parts = tag.split('::', 1)
-                                category = parts[0].strip()
-                                subcategory = parts[1].strip()
-                                
-                                if category not in category_details:
-                                    category_details[category] = set()
-                                category_details[category].add(subcategory)
+                if hasattr(package.candidate, 'section') and package.candidate.section:
+                    section = package.candidate.section
+                    
+                    if '/' in section:
+                        # Parse hierarchical sections like "games/action"
+                        parts = section.split('/', 1)
+                        main_category = parts[0]
+                        subcategory = parts[1]
+                        
+                        if main_category not in section_details:
+                            section_details[main_category] = {}
+                        if subcategory not in section_details[main_category]:
+                            section_details[main_category][subcategory] = 0
+                        section_details[main_category][subcategory] += 1
+                    else:
+                        # Flat section
+                        if section not in section_details:
+                            section_details[section] = 0
+                        section_details[section] += 1
             
-            # Convert sets to sorted lists
-            return {cat: sorted(list(subcats)) for cat, subcats in category_details.items()}
+            return section_details
         except ImportError:
             return {}
         except Exception:

@@ -114,8 +114,8 @@ class AptRepository(BaseRepository):
         if cached_categories is not None:
             return cached_categories
         
-        # Collect from debtags
-        categories = self._collect_debtags_categories()
+        # Collect from sections
+        categories = self._collect_apt_sections()
         
         # Cache the results
         if categories:
@@ -123,24 +123,17 @@ class AptRepository(BaseRepository):
         
         return categories
     
-    def _collect_debtags_categories(self) -> List[str]:
-        """Collect categories from debtags using Python apt library"""
+    def _collect_apt_sections(self) -> List[str]:
+        """Collect categories from APT sections"""
         try:
             import apt
             cache = apt.Cache()
-            categories = set()
+            sections = set()
             
             for package in cache:
-                if hasattr(package.candidate, 'record') and package.candidate.record:
-                    debtags = package.candidate.record.get('Tag', '')
-                    if debtags:
-                        for tag in debtags.split(','):
-                            tag = tag.strip()
-                            if '::' in tag:
-                                category = tag.split('::')[0].strip()
-                                if category:
-                                    categories.add(category)
+                if hasattr(package.candidate, 'section') and package.candidate.section:
+                    sections.add(package.candidate.section)
             
-            return sorted(list(categories))
+            return sorted(list(sections))
         except Exception:
             return []

@@ -78,7 +78,8 @@ class MainView(QMainWindow):
             'office': self.officeBtn,
             'science': self.scienceBtn,
             'system': self.systemBtn,
-            'utilities': self.utilitiesBtn
+            'utilities': self.utilitiesBtn,
+            'categories': self.viewCategoriesBtn
         }
         
 
@@ -104,6 +105,9 @@ class MainView(QMainWindow):
         self.systemBtn.clicked.connect(lambda: self.select_category('system'))
         self.utilitiesBtn.clicked.connect(lambda: self.select_category('utilities'))
         
+        # Connect View Categories button
+        self.viewCategoriesBtn.clicked.connect(lambda: self.view_categories())
+        
         # Set initial selection to last used page
         last_page = self.app_settings.get_last_selected_page()
         page_indices = {'home': 0, 'installed': 1, 'updates': 2, 'category': 3, 'settings': 4, 'about': 5}
@@ -120,6 +124,7 @@ class MainView(QMainWindow):
             'installed': 'installed_panel.ui', 
             'updates': 'updates_panel.ui',
             'category': 'category_panel.ui',
+            'category_list': 'category_list_panel.ui',
             'settings': 'settings_panel.ui',
             'about': 'about_panel.ui'
         }
@@ -236,22 +241,10 @@ class MainView(QMainWindow):
         # Update page title for category
         self.pageTitle.setText(f"{category.title()} Packages")
         
-        # Load category packages
-        mock_packages = {
-            "all": self.package_manager.get_installed_packages(),
-            "accessibility": [Package("orca", "3.38", "Screen reader")],
-            "development": [Package("gcc", "11.0", "GNU Compiler Collection"), Package("python3", "3.9", "Python interpreter")],
-            "education": [Package("gcompris", "1.0", "Educational games"), Package("kstars", "3.5", "Astronomy software")],
-            "games": [Package("supertux", "0.6", "2D platform game"), Package("chess", "1.0", "Chess game")],
-            "graphics": [Package("gimp", "2.10", "Image editor"), Package("inkscape", "1.1", "Vector graphics")],
-            "internet": [Package("firefox", "100.0", "Web browser"), Package("thunderbird", "91.0", "Email client")],
-            "multimedia": [Package("vlc", "3.0", "Media player"), Package("audacity", "3.0", "Audio editor")],
-            "office": [Package("libreoffice", "7.2", "Office suite"), Package("evince", "40.0", "Document viewer")],
-            "science": [Package("octave", "6.4", "Scientific computing"), Package("r-base", "4.1", "Statistical computing")],
-            "system": [Package("htop", "3.0", "System monitor"), Package("systemd", "247", "System manager")],
-            "utilities": [Package("file-roller", "3.40", "Archive manager"), Package("calculator", "40.0", "Calculator")]
-        }
-        self.current_packages = mock_packages.get(category, [])
+        # Load category packages using APT section mapping
+        from controllers.apt_controller import APTController
+        apt_controller = APTController()
+        self.current_packages = apt_controller.get_packages_by_sidebar_category(category)
         self.update_category_display()
         self.statusbar.showMessage(f"Showing {category} packages", 2000)
     
@@ -441,3 +434,45 @@ class MainView(QMainWindow):
     def update_all_packages(self):
         """Update all available packages"""
         self.statusbar.showMessage("Updating all packages...", 3000)
+    
+    def populate_category_list(self):
+        """Populate the category list with hierarchical APT sections"""
+        from PyQt6.QtWidgets import QTreeWidgetItem
+        from controllers.apt_controller import APTController
+        
+        category_panel = self.panels['category_list']
+        tree = category_panel.categoryTree
+        tree.clear()
+        
+        # Get section details from APT controller
+        apt_controller = APTController()
+        section_details = apt_controller.get_section_details()
+        
+        for section, data in sorted(section_details.items()):
+            if isinstance(data, dict):
+                # Hierarchical section with subcategories
+                total_packages = sum(data.values())
+                section_item = QTreeWidgetItem([f"📁 {section} ({total_packages} packages)"])
+                tree.addTopLevelItem(section_item)
+                
+                # Add subcategories
+                for subcategory, count in sorted(data.items()):
+                    subcat_item = QTreeWidgetItem([f"📄 {subcategory} ({count} packages)"])
+                    section_item.addChild(subcat_item)
+            else:
+                # Flat section
+                section_item = QTreeWidgetItem([f"📁 {section} ({data} packages)"])
+                tree.addTopLevelItem(section_item)
+        
+        # Expand all categories by default
+        tree.expandAll()
+    
+    def view_categories(self):
+        """Show categories view"""
+        self.update_button_selection('categories')
+        # Use category_list panel (index 4)
+        panel_index = list(self.panels.keys()).index('category_list')
+        self.contentStack.setCurrentIndex(panel_index)
+        self.pageTitle.setText("Browse Categories")
+        self.populate_category_list()
+        self.statusbar.showMessage("Browse packages by category", 2000)
