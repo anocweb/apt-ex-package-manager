@@ -117,11 +117,11 @@ class MainView(QMainWindow):
 
         
         # Connect main navigation buttons
-        self.homeBtn.clicked.connect(lambda: (self.logging_service.debug("Home button clicked"), self.select_page('home', 0))[1])
-        self.installedBtn.clicked.connect(lambda: (self.logging_service.debug("Installed button clicked"), self.select_page('installed', 1))[1])
-        self.updatesBtn.clicked.connect(lambda: (self.logging_service.debug("Updates button clicked"), self.select_page('updates', 2))[1])
-        self.settingsBtn.clicked.connect(lambda: (self.logging_service.debug("Settings button clicked"), self.select_page('settings', 4))[1])
-        self.aboutBtn.clicked.connect(lambda: (self.logging_service.debug("About button clicked"), self.select_page('about', 5))[1])
+        self.homeBtn.clicked.connect(lambda: (self.logging_service.debug("Home button clicked"), self.select_page('home'))[1])
+        self.installedBtn.clicked.connect(lambda: (self.logging_service.debug("Installed button clicked"), self.select_page('installed'))[1])
+        self.updatesBtn.clicked.connect(lambda: (self.logging_service.debug("Updates button clicked"), self.select_page('updates'))[1])
+        self.settingsBtn.clicked.connect(lambda: (self.logging_service.debug("Settings button clicked"), self.select_page('settings'))[1])
+        self.aboutBtn.clicked.connect(lambda: (self.logging_service.debug("About button clicked"), self.select_page('about'))[1])
         
         # Connect category buttons
         self.allAppsBtn.clicked.connect(lambda: (self.logging_service.debug("All Apps button clicked"), self.select_category('all'))[1])
@@ -236,11 +236,30 @@ class MainView(QMainWindow):
         self.package_manager.install_package(package_name)
         self.statusbar.showMessage(f"Installing {package_name}...", 3000)
     
-    def select_page(self, page_key, page_index):
+    def get_panel_index(self, panel_name):
+        """Get the index of a panel in the content stack"""
+        if panel_name not in self.panels:
+            self.logging_service.error(f"Panel {panel_name} not found")
+            return 0
+        
+        panel_widget = self.panels[panel_name]
+        for i in range(self.contentStack.count()):
+            if self.contentStack.widget(i) is panel_widget:
+                return i
+        
+        self.logging_service.error(f"Panel {panel_name} not found in content stack")
+        return 0
+    
+    def select_page(self, page_key, page_index=None):
         self.logging_service.info(f"Navigated to {page_key} page")
         # Update button selection
         self.update_button_selection(page_key)
         
+        # Get panel index dynamically if not provided
+        if page_index is None:
+            page_index = self.get_panel_index(page_key)
+        
+        self.logging_service.debug(f"Switching to panel index {page_index} for {page_key}")
         # Switch to the appropriate page
         self.contentStack.setCurrentIndex(page_index)
         
@@ -414,6 +433,10 @@ class MainView(QMainWindow):
         settings_panel = self.panels['settings']
         self.logging_service.info("Populating settings panel")
         
+        # Ensure settings panel is visible
+        settings_panel.setVisible(True)
+        self.logging_service.debug(f"Set settings panel visible: {settings_panel.isVisible()}")
+        
         # Check if settings panel has required attributes
         if not hasattr(settings_panel, 'flatpakSources'):
             self.logging_service.error("Settings panel missing flatpakSources attribute")
@@ -422,11 +445,13 @@ class MainView(QMainWindow):
         # Populate Flatpak sources
         flatpak_tree = settings_panel.flatpakSources
         self.logging_service.info("Found flatpakSources widget")
+        self.logging_service.debug(f"Flatpak tree visible: {flatpak_tree.isVisible()}, size: {flatpak_tree.size()}")
         flatpak_tree.clear()
         flatpak_item = QTreeWidgetItem(["✓ Flathub - dl.flathub.org"])
         flatpak_tree.addTopLevelItem(flatpak_item)
         flatpak_tree.setFixedHeight(flatpak_tree.sizeHintForRow(0) * flatpak_tree.topLevelItemCount() + 4)
         settings_panel.flatpakNoSources.setVisible(False)
+        self.logging_service.debug(f"Added {flatpak_tree.topLevelItemCount()} items to flatpak tree")
         
         # Populate APT sources
         apt_tree = settings_panel.aptSources
@@ -446,12 +471,40 @@ class MainView(QMainWindow):
             apt_tree.addTopLevelItem(item)
         apt_tree.setFixedHeight(apt_tree.sizeHintForRow(0) * apt_tree.topLevelItemCount() + 4)
         settings_panel.aptNoSources.setVisible(False)
+        self.logging_service.debug(f"Added {apt_tree.topLevelItemCount()} items to APT tree")
         
         # AppImage sources (empty - show no sources message)
         appimage_tree = settings_panel.appimageSources
         appimage_tree.clear()
         appimage_tree.setVisible(False)
         settings_panel.appimageNoSources.setVisible(True)
+        
+        # Force update layout
+        settings_panel.updateGeometry()
+        settings_panel.update()
+        
+        self.logging_service.debug(f"Settings panel size: {settings_panel.size()}, visible: {settings_panel.isVisible()}")
+        self.logging_service.debug(f"Content stack current index: {self.contentStack.currentIndex()}")
+        self.logging_service.debug(f"Content stack widget at index 4: {self.contentStack.widget(4)}")
+        self.logging_service.debug(f"Settings panel parent: {settings_panel.parent()}")
+        
+        # Check all panel indices
+        for i in range(self.contentStack.count()):
+            widget = self.contentStack.widget(i)
+            panel_name = None
+            for name, panel in self.panels.items():
+                if panel is widget:
+                    panel_name = name
+                    break
+            self.logging_service.debug(f"Index {i}: {panel_name} - {widget}")
+        
+        # Find settings panel index
+        settings_index = -1
+        for i in range(self.contentStack.count()):
+            if self.contentStack.widget(i) is settings_panel:
+                settings_index = i
+                break
+        self.logging_service.debug(f"Settings panel actual index: {settings_index}")
     
     def connect_settings_buttons(self):
         """Connect settings panel button actions"""
