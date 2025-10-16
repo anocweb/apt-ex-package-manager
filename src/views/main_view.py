@@ -9,9 +9,10 @@ from services.logging_service import LoggingService
 import os
 
 class MainView(QMainWindow):
-    def __init__(self, package_manager, dev_logging=False, stdout_log_level='WARNING'):
+    def __init__(self, package_manager, connection_manager, dev_logging=False, stdout_log_level='WARNING'):
         super().__init__()
         self.package_manager = package_manager
+        self.connection_manager = connection_manager
         self.current_packages = []
         self.selected_button = None
         self.sidebar_buttons = {}
@@ -433,9 +434,7 @@ class MainView(QMainWindow):
             cached_packages = self.cache_manager.get_packages('apt') or []
         else:
             # Get all packages at once and filter by sections
-            from models.package_cache_model import PackageCacheModel
-            package_cache_model = PackageCacheModel()
-            all_packages = package_cache_model.get_by_backend('apt') or []
+            all_packages = self.cache_manager.package_cache.model.get_by_backend('apt') or []
             cached_packages = [pkg for pkg in all_packages if pkg.section in sections]
         
         # Get next batch
@@ -727,7 +726,7 @@ class MainView(QMainWindow):
         from PyQt6.QtCore import QThread, pyqtSignal
         from cache.cache_manager import CacheManager
         
-        self.cache_manager = CacheManager(logging_service=self.logging_service)
+        self.cache_manager = CacheManager(self.connection_manager, logging_service=self.logging_service)
         
         # Check what needs updating
         update_categories = self.cache_manager.needs_category_update('apt')
@@ -969,7 +968,10 @@ class MainView(QMainWindow):
         if not hasattr(self, 'odrs_service'):
             if self.app_settings.get_odrs_enabled():
                 from services.odrs_service import ODRSService
+                from models.rating_cache_model import RatingCacheModel
                 self.odrs_service = ODRSService(status_callback=self.set_status_message, logging_service=self.logging_service)
+                # Set up the cache model with connection manager
+                self.odrs_service.cache_model = RatingCacheModel(self.connection_manager, logging_service=self.logging_service)
             else:
                 self.odrs_service = None
         
@@ -1034,9 +1036,7 @@ class MainView(QMainWindow):
             count = 0
             
             for section in sections:
-                from models.package_cache_model import PackageCacheModel
-                package_cache_model = PackageCacheModel()
-                section_packages = package_cache_model.get_by_section('apt', section) or []
+                section_packages = self.cache_manager.package_cache.model.get_by_section('apt', section) or []
                 count += len(section_packages)
             
             button.setText(f"{icon_text} ({count})")

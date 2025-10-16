@@ -4,11 +4,11 @@ from cache.package_cache import PackageCache
 class CacheManager:
     """Centralized cache management with expiration handling"""
     
-    def __init__(self, logging_service=None):
+    def __init__(self, connection_manager, logging_service=None):
         self.logging_service = logging_service
         self.logger = logging_service.get_logger('cache.manager') if logging_service else None
-        self.category_cache = CategoryCache(logging_service)
-        self.package_cache = PackageCache(logging_service)
+        self.category_cache = CategoryCache(connection_manager, logging_service)
+        self.package_cache = PackageCache(connection_manager, logging_service)
     
     def is_cache_expired(self, backend: str) -> bool:
         """Check if any cache is expired for the backend"""

@@ -7,19 +7,54 @@ class ExpandableItem(QWidget):
     
     selection_changed = pyqtSignal(object)  # Signal when this item is selected
     
+    # Class-level style cache
+    _styles_computed = False
+    _cached_styles = {}
+    
+    @classmethod
+    def _compute_styles(cls):
+        """Compute and cache all styles once"""
+        if cls._styles_computed:
+            return
+        
+        from PyQt6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if not app:
+            return
+        
+        palette = app.palette()
+        is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
+        
+        if is_dark:
+            bg_normal = palette.color(palette.ColorRole.AlternateBase).darker(110).name()
+            bg_selected = palette.color(palette.ColorRole.Highlight).name()
+            text_selected = palette.color(palette.ColorRole.HighlightedText).name()
+        else:
+            bg_normal = palette.color(palette.ColorRole.AlternateBase).darker(105).name()
+            bg_selected = palette.color(palette.ColorRole.Highlight).name()
+            text_selected = palette.color(palette.ColorRole.HighlightedText).name()
+        
+        cls._cached_styles = {
+            'normal': f"ExpandableItem {{ background-color: {bg_normal}; border-radius: 3px; }}",
+            'selected': f"ExpandableItem {{ background-color: {bg_selected}; border-radius: 3px; }}",
+            'text_selected': text_selected
+        }
+        cls._styles_computed = True
+    
     def __init__(self, message: str, data: str = None, color=None, logging_service=None):
         super().__init__()
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Enable stylesheet backgrounds
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.message = message
         self.data = data
         self.is_expanded = False
         self.is_selected = False
         self.message_color = color
         
-        # Debug info removed to respect log level settings
+        # Ensure styles are computed
+        self._compute_styles()
         
         self.setup_ui()
-        self.update_appearance()
+        # Don't call update_appearance() here - let Qt handle initial styling
     
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -124,38 +159,40 @@ class ExpandableItem(QWidget):
     
     def show_context_menu(self, position):
         """Show context menu for copying"""
-        # Get parent log view to check for multiple selections
+        # Get parent virtual container to check for multiple selections
         parent_widget = self.parent()
-        while parent_widget and not hasattr(parent_widget, 'selected_items'):
+        while parent_widget and not hasattr(parent_widget, 'get_selected_widgets'):
             parent_widget = parent_widget.parent()
         
         menu = QMenu(self)
         
-        if parent_widget and len(parent_widget.selected_items) > 1:
-            # Multiple items selected
-            count = len(parent_widget.selected_items)
-            copy_text_action = menu.addAction(f"Copy Text ({count} items)")
-            copy_text_action.triggered.connect(lambda: self.copy_multiple_text(parent_widget.selected_items))
-            
-            # Check if any selected items have data
-            has_data = any(item.data for item in parent_widget.selected_items)
-            if has_data:
-                copy_data_action = menu.addAction(f"Copy Data ({count} items)")
-                copy_data_action.triggered.connect(lambda: self.copy_multiple_data(parent_widget.selected_items))
+        if parent_widget:
+            selected_widgets = parent_widget.get_selected_widgets()
+            if len(selected_widgets) > 1:
+                # Multiple items selected
+                count = len(selected_widgets)
+                copy_text_action = menu.addAction(f"Copy Text ({count} items)")
+                copy_text_action.triggered.connect(lambda: self.copy_multiple_text(selected_widgets))
                 
-                copy_both_action = menu.addAction(f"Copy Both ({count} items)")
-                copy_both_action.triggered.connect(lambda: self.copy_multiple_both(parent_widget.selected_items))
-        else:
-            # Single item (this item)
-            copy_text_action = menu.addAction("Copy Text")
-            copy_text_action.triggered.connect(self.copy_text)
-            
-            if self.data:
-                copy_data_action = menu.addAction("Copy Data")
-                copy_data_action.triggered.connect(self.copy_data)
+                # Check if any selected items have data
+                has_data = any(item.data for item in selected_widgets)
+                if has_data:
+                    copy_data_action = menu.addAction(f"Copy Data ({count} items)")
+                    copy_data_action.triggered.connect(lambda: self.copy_multiple_data(selected_widgets))
+                    
+                    copy_both_action = menu.addAction(f"Copy Both ({count} items)")
+                    copy_both_action.triggered.connect(lambda: self.copy_multiple_both(selected_widgets))
+            else:
+                # Single item (this item)
+                copy_text_action = menu.addAction("Copy Text")
+                copy_text_action.triggered.connect(self.copy_text)
                 
-                copy_both_action = menu.addAction("Copy Both")
-                copy_both_action.triggered.connect(self.copy_both)
+                if self.data:
+                    copy_data_action = menu.addAction("Copy Data")
+                    copy_data_action.triggered.connect(self.copy_data)
+                    
+                    copy_both_action = menu.addAction("Copy Both")
+                    copy_both_action.triggered.connect(self.copy_both)
         
         menu.exec(position)
     
@@ -238,30 +275,27 @@ class ExpandableItem(QWidget):
     
     def set_selected(self, selected: bool):
         """Set selection state"""
-        self.is_selected = selected
-        self.update_appearance()
+        if self.is_selected != selected:  # Only update if state changed
+            self.is_selected = selected
+            self.update_appearance()
     
     def update_appearance(self):
         """Update widget appearance based on selection state"""
-        palette = self.palette()
-        
         if self.is_selected:
-            bg_color = palette.color(palette.ColorRole.Highlight)
-            text_color = palette.color(palette.ColorRole.HighlightedText)
+            self.setStyleSheet(self._cached_styles['selected'])
+            text_color = self._cached_styles['text_selected']
         else:
-            # Theme-compatible dark grey background
-            is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
-            if is_dark:
-                bg_color = palette.color(palette.ColorRole.AlternateBase).darker(110)
-            else:
-                bg_color = palette.color(palette.ColorRole.AlternateBase).darker(105)
-            text_color = self.message_color or palette.color(palette.ColorRole.Text)
+            self.setStyleSheet(self._cached_styles['normal'])
+            text_color = self.message_color.name() if self.message_color else None
         
-        self.setStyleSheet(f"ExpandableItem {{ background-color: {bg_color.name()}; border-radius: 3px; }}")
-        self.update()  # Force widget refresh
-        self.message_label.setStyleSheet(f"QLabel {{ color: {text_color.name()}; background: transparent; }}")
+        if text_color:
+            self.message_label.setStyleSheet(f"QLabel {{ color: {text_color}; background: transparent; }}")
+        else:
+            self.message_label.setStyleSheet("QLabel { background: transparent; }")
     
     def set_message_color(self, color):
         """Set the color of the message text"""
-        self.message_color = color
-        self.update_appearance()
+        if self.message_color != color:
+            self.message_color = color
+            if not self.is_selected:  # Only update if not selected
+                self.update_appearance()

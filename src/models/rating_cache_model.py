@@ -17,8 +17,8 @@ class RatingCache:
 class RatingCacheModel:
     """Model for managing rating cache in SQLite database"""
     
-    def __init__(self, logging_service=None):
-        self.db_manager = DatabaseManager()
+    def __init__(self, connection_manager, logging_service=None):
+        self.connection_manager = connection_manager
         self.logging_service = logging_service
         
         if self.logging_service:
@@ -32,8 +32,7 @@ class RatingCacheModel:
     
     def _ensure_table_exists(self):
         """Create rating cache table if it doesn't exist"""
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS rating_cache (
                     app_id TEXT PRIMARY KEY,
@@ -43,12 +42,10 @@ class RatingCacheModel:
                     cached_at REAL NOT NULL
                 )
             """)
-            conn.commit()
     
     def get_rating(self, app_id: str, ttl: int = 3600) -> Optional[RatingCache]:
         """Get cached rating if not expired"""
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             cursor = conn.execute(
                 "SELECT app_id, rating, review_count, star_counts, cached_at FROM rating_cache WHERE app_id = ?",
                 (app_id,)
@@ -75,14 +72,12 @@ class RatingCacheModel:
         star_counts_json = json.dumps(star_counts)
         cached_at = time.time()
         
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO rating_cache 
                 (app_id, rating, review_count, star_counts, cached_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (app_id, rating, review_count, star_counts_json, cached_at))
-            conn.commit()
         
         self.logger.debug(f"Cached rating for {app_id}: {rating}/5 ({review_count} reviews)")
     
@@ -90,35 +85,27 @@ class RatingCacheModel:
         """Cache that an app has no rating available"""
         cached_at = time.time()
         
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO rating_cache 
                 (app_id, rating, review_count, star_counts, cached_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (app_id, 0.0, 0, '{}', cached_at))
-            conn.commit()
         
         self.logger.debug(f"Cached no rating available for {app_id}")
     
     def delete_rating(self, app_id: str):
         """Delete cached rating"""
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("DELETE FROM rating_cache WHERE app_id = ?", (app_id,))
-            conn.commit()
     
     def clear_expired(self, ttl: int = 3600):
         """Clear all expired ratings"""
         cutoff_time = time.time() - ttl
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("DELETE FROM rating_cache WHERE cached_at < ?", (cutoff_time,))
-            conn.commit()
     
     def clear_all(self):
         """Clear all cached ratings"""
-        import sqlite3
-        with sqlite3.connect(self.db_manager.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             conn.execute("DELETE FROM rating_cache")
-            conn.commit()

@@ -6,7 +6,7 @@ from typing import List
 import logging
 from settings.app_settings import AppSettings
 
-from widgets.expandable_item import ExpandableItem
+from widgets.virtual_log_container import VirtualLogContainer
 
 class LogView(QMainWindow):
     """Independent log view window with colored log levels"""
@@ -86,20 +86,9 @@ class LogView(QMainWindow):
         
         layout.addLayout(controls_layout)
         
-        # Log scroll area with expandable items
-        self.log_scroll = QScrollArea()
-        self.log_container = QWidget()
-        self.log_layout = QVBoxLayout(self.log_container)
-        self.log_layout.setContentsMargins(0, 0, 0, 0)
-        self.log_layout.setSpacing(1)
-        
-        self.log_scroll.setWidget(self.log_container)
-        self.log_scroll.setWidgetResizable(True)
-        layout.addWidget(self.log_scroll)
-        
-        # Store expandable items for selection
-        self.expandable_items = []
-        self.selected_items = []
+        # Virtual log container
+        self.log_container = VirtualLogContainer(self.logging_service)
+        layout.addWidget(self.log_container)
         
         # Button layout
         button_layout = QHBoxLayout()
@@ -134,18 +123,13 @@ class LogView(QMainWindow):
 
     
     def populate_logs(self):
-        """Populate log view with colored entries"""
+        """Populate log view with colored entries using virtual scrolling"""
         # Recursion guard - prevent infinite loop
         if self._populating_logs:
             return
         
         self._populating_logs = True
         try:
-            # Clear existing items
-            for item in self.expandable_items:
-                item.setParent(None)
-            self.expandable_items.clear()
-            
             # Theme-aware color mapping for log levels
             palette = self.palette()
             is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
@@ -169,11 +153,10 @@ class LogView(QMainWindow):
                     'CRITICAL': QColor(139, 0, 0)      # Very Dark Red
                 }
             
-            # Get messages from logging service callback
+            # Get messages from logging service
             if hasattr(self.logging_service, '_log_messages'):
                 log_entries = self.logging_service._log_messages
             else:
-                # Fallback to basic messages
                 log_entries = []
             
             # Extract messages for logger menu
@@ -182,23 +165,22 @@ class LogView(QMainWindow):
                 if isinstance(entry, dict):
                     messages.append(entry['message'])
                 else:
-                    messages.append(entry)  # Backward compatibility
+                    messages.append(entry)
             
             # Update logger filter menu
             self.update_logger_menu(messages)
             
-            # Reverse entries to show newest first
-            for entry in reversed(log_entries):
+            # Filter entries based on current filters
+            filtered_entries = []
+            for entry in reversed(log_entries):  # Newest first
                 # Handle both old string format and new dict format
                 if isinstance(entry, dict):
                     message = entry['message']
-                    data = entry.get('data')
                 else:
                     message = entry
-                    data = None
                 
                 # Extract log level from message
-                level = 'INFO'  # Default
+                level = 'INFO'
                 for lvl in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
                     if lvl in message:
                         level = lvl
@@ -210,47 +192,27 @@ class LogView(QMainWindow):
                 if len(parts) >= 3:
                     logger_name = parts[1]
                 
-                # Skip message if level or logger is not visible
-                if level not in self.visible_levels or (self.visible_loggers and logger_name not in self.visible_loggers):
+                # Apply filters
+                if level not in self.visible_levels:
                     continue
-                
-                # Skip message if it doesn't match search filter
+                if self.visible_loggers and logger_name not in self.visible_loggers:
+                    continue
                 if self.search_text and not self.fuzzy_match(message, self.search_text):
                     continue
                 
-                # Create expandable item
-                item = ExpandableItem(message, data, colors.get(level, colors['INFO']), self.logging_service)
-                item.selection_changed.connect(self.on_item_selected)
-                self.log_layout.addWidget(item)
-                self.expandable_items.append(item)
+                filtered_entries.append(entry)
             
-            # Add stretch to push items to top
-            self.log_layout.addStretch()
-            
-
+            # Update virtual container
+            self.log_container.set_log_entries(log_entries, colors)
+            self.log_container.set_filtered_entries(filtered_entries)
             
         finally:
             self._populating_logs = False
     
     def on_item_selected(self, selected_item):
-        """Handle item selection with multi-select support"""
-        # Check if Ctrl was held (multi-select mode)
-        modifiers = QApplication.keyboardModifiers()
-        if modifiers & Qt.KeyboardModifier.ControlModifier:
-            # Multi-select: toggle selection
-            if selected_item in self.selected_items:
-                selected_item.set_selected(False)
-                self.selected_items.remove(selected_item)
-            else:
-                selected_item.set_selected(True)
-                self.selected_items.append(selected_item)
-        else:
-            # Single-select: clear others and select this one
-            for item in self.selected_items:
-                item.set_selected(False)
-            self.selected_items.clear()
-            selected_item.set_selected(True)
-            self.selected_items.append(selected_item)
+        """Handle item selection - delegated to virtual container"""
+        # Selection is now handled by VirtualLogContainer
+        pass
     
     def copy_logs(self):
         """Copy all visible log messages to clipboard"""
@@ -263,9 +225,11 @@ class LogView(QMainWindow):
     def get_visible_logs(self):
         """Get currently visible log messages based on filters"""
         visible_logs = []
-        for item in self.expandable_items:
-            visible_logs.append(item.message)
-        
+        for entry in self.log_container.filtered_entries:
+            if isinstance(entry, dict):
+                visible_logs.append(entry['message'])
+            else:
+                visible_logs.append(entry)
         return visible_logs
     
     def save_to_file(self):

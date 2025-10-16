@@ -1,11 +1,13 @@
 from typing import Dict, List, Optional
 from models.package_cache_model import PackageCacheModel, PackageCache as PackageCacheData
+from cache.connection_manager import SQLiteConnectionManager
 
 class PackageCache:
     """Package cache interface"""
     
-    def __init__(self, logging_service=None):
-        self.model = PackageCacheModel()
+    def __init__(self, connection_manager: SQLiteConnectionManager, logging_service=None):
+        self.model = PackageCacheModel(connection_manager)
+        self.conn_mgr = connection_manager
         self.logger = logging_service.get_logger('cache.package') if logging_service else None
     
     def log(self, message):
@@ -25,47 +27,62 @@ class PackageCache:
         return packages
     
     def set_packages(self, backend: str, packages: List[Dict]):
-        """Cache packages for backend"""
+        """Cache packages for backend using bulk insert"""
         # Clear existing packages for this backend
         self.clear_cache(backend)
         
-        # Insert new packages
-        for pkg_data in packages:
-            package = PackageCacheData(
-                backend=pkg_data['backend'],
-                package_id=pkg_data['package_id'],
-                name=pkg_data['name'],
-                version=pkg_data.get('version'),
-                description=pkg_data.get('description'),
-                summary=pkg_data.get('summary'),
-                section=pkg_data.get('section'),
-                architecture=pkg_data.get('architecture'),
-                size=pkg_data.get('size'),
-                installed_size=pkg_data.get('installed_size'),
-                maintainer=pkg_data.get('maintainer'),
-                homepage=pkg_data.get('homepage'),
-                metadata=pkg_data.get('metadata', {})
-            )
-            self.model.create(package)
+        if not packages:
+            return
+        
+        # Bulk insert for better performance
+        with self.conn_mgr.transaction() as conn:
+            # Prepare package data
+            package_data = []
+            
+            for pkg_data in packages:
+                package_values = (
+                    pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
+                    pkg_data.get('version'), pkg_data.get('description'), pkg_data.get('summary'),
+                    pkg_data.get('section'), pkg_data.get('architecture'), pkg_data.get('size'),
+                    pkg_data.get('installed_size'), pkg_data.get('maintainer'), pkg_data.get('homepage'),
+                    pkg_data.get('license'), pkg_data.get('source_url'), pkg_data.get('icon_url')
+                )
+                package_data.append(package_values)
+            
+            # Bulk insert packages
+            conn.executemany('''
+                INSERT INTO package_cache 
+                (backend, package_id, name, version, description, summary, section, 
+                 architecture, size, installed_size, maintainer, homepage, license, 
+                 source_url, icon_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', package_data)
+        
+        self.log(f"Bulk cached {len(packages)} packages for {backend}")
     
     def clear_cache(self, backend: Optional[str] = None):
         """Clear cache for specific backend or all backends"""
         if self.logger:
             self.logger.debug(f"Clearing package cache for {backend or 'all backends'}")
-        if backend:
-            packages = self.model.get_by_backend(backend)
-            count = len(packages)
-            for package in packages:
-                self.model.delete(package.id)
-            self.log(f"Cleared {count} cached packages for {backend}")
-        else:
-            # Clear all packages
-            import sqlite3
-            with sqlite3.connect(self.model.db.db_path) as conn:
-                conn.execute('DELETE FROM package_cache')
-                conn.commit()
-            self.log("Cleared all cached packages")
+        
+        with self.conn_mgr.connection() as conn:
+            if backend:
+                cursor = conn.execute('DELETE FROM package_cache WHERE backend = ?', (backend,))
+                count = cursor.rowcount
+                self.log(f"Cleared {count} cached packages for {backend}")
+            else:
+                cursor = conn.execute('DELETE FROM package_cache')
+                count = cursor.rowcount
+                self.log(f"Cleared {count} cached packages")
     
     def is_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        return self.model.db.is_package_cache_valid(backend, max_age_hours)
+        with self.conn_mgr.connection() as conn:
+            cursor = conn.execute('''
+                SELECT 1 FROM package_cache 
+                WHERE backend = ? 
+                AND datetime(last_updated) > datetime('now', '-{} hours')
+                LIMIT 1
+            '''.format(max_age_hours), (backend,))
+            
+            return cursor.fetchone() is not None

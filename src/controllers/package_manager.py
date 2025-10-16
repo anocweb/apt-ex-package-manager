@@ -1,9 +1,12 @@
 from .apt_controller import APTController
 from models.package_model import Package
+from cache.connection_manager import SQLiteConnectionManager
 
 class PackageManager:
-    def __init__(self):
-        self.apt_controller = APTController()
+    def __init__(self, connection_manager: SQLiteConnectionManager, logging_service=None):
+        self.connection_manager = connection_manager
+        self.logging_service = logging_service
+        self.apt_controller = APTController(connection_manager, logging_service)
     
     def search_packages(self, query):
         return self.apt_controller.search_packages(query)

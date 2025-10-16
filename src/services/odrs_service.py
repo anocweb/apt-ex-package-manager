@@ -46,9 +46,8 @@ class ODRSService:
             import logging
             self.logger = logging.getLogger('odrs')
         
-        # Initialize SQLite cache
-        from models.rating_cache_model import RatingCacheModel
-        self.cache_model = RatingCacheModel(logging_service=self.logging_service)
+        # Initialize SQLite cache - will be set by MainView
+        self.cache_model = None
         self.logger.debug("ODRS service initialized")
     
     def get_ratings_async(self, app_ids: List[str], callback):

@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 from dataclasses import dataclass
-from cache.database import DatabaseManager
+from cache.connection_manager import SQLiteConnectionManager
 
 @dataclass
 class PackageCache:
@@ -27,13 +27,12 @@ class PackageCache:
 class PackageCacheModel:
     """CRUD operations for package cache"""
     
-    def __init__(self):
-        self.db = DatabaseManager()
+    def __init__(self, connection_manager: SQLiteConnectionManager):
+        self.conn_mgr = connection_manager
     
     def create(self, package: PackageCache) -> int:
         """Create a new package with metadata"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.transaction() as conn:
             # Insert package
             cursor = conn.execute('''
                 INSERT INTO package_cache 
@@ -56,13 +55,11 @@ class PackageCacheModel:
                         VALUES (?, ?, ?)
                     ''', (package_cache_id, key, value))
             
-            conn.commit()
             return package_cache_id
     
     def read(self, package_cache_id: int) -> Optional[PackageCache]:
         """Read a package by ID with metadata"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.connection() as conn:
             # Get package
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
@@ -87,8 +84,7 @@ class PackageCacheModel:
     
     def update(self, package: PackageCache) -> bool:
         """Update an existing package and metadata"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.transaction() as conn:
             # Update package
             cursor = conn.execute('''
                 UPDATE package_cache 
@@ -113,21 +109,17 @@ class PackageCacheModel:
                         VALUES (?, ?, ?)
                     ''', (package.id, key, value))
             
-            conn.commit()
             return cursor.rowcount > 0
     
     def delete(self, package_cache_id: int) -> bool:
         """Delete a package (metadata cascades)"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.connection() as conn:
             cursor = conn.execute('DELETE FROM package_cache WHERE id = ?', (package_cache_id,))
-            conn.commit()
             return cursor.rowcount > 0
     
     def get_by_backend(self, backend: str) -> List[PackageCache]:
         """Get all packages for a backend"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.connection() as conn:
             # Get all packages first
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
@@ -168,28 +160,39 @@ class PackageCacheModel:
             return packages
     
     def search(self, backend: str, query: str) -> List[PackageCache]:
-        """Search packages by name or description"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
-            # Get all matching packages first
+        """Search packages by name or description with optimized ranking"""
+        with self.conn_mgr.connection() as conn:
+            # Optimized search with ranking: exact name match first, then prefix, then contains
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
                        section, architecture, size, installed_size, maintainer, homepage, 
-                       license, source_url, icon_url, last_updated
+                       license, source_url, icon_url, last_updated,
+                       CASE 
+                           WHEN name = ? THEN 1
+                           WHEN name LIKE ? THEN 2
+                           WHEN name LIKE ? THEN 3
+                           WHEN description LIKE ? THEN 4
+                           ELSE 5
+                       END as rank
                 FROM package_cache 
-                WHERE backend = ? AND (name LIKE ? OR description LIKE ?)
-                ORDER BY name
-            ''', (backend, f'%{query}%', f'%{query}%'))
+                WHERE backend = ? AND (
+                    name LIKE ? OR 
+                    description LIKE ?
+                )
+                ORDER BY rank, name
+                LIMIT 100
+            ''', (query, f'{query}%', f'%{query}%', f'%{query}%', backend, f'%{query}%', f'%{query}%'))
             
             packages = []
             package_ids = []
             for row in cursor.fetchall():
-                package = PackageCache(*row)
+                # Exclude rank column from PackageCache constructor
+                package = PackageCache(*row[:-1])
                 package.metadata = {}
                 packages.append(package)
                 package_ids.append(package.id)
             
-            # Get all metadata in one query if there are packages
+            # Get metadata efficiently
             if package_ids:
                 placeholders = ','.join('?' * len(package_ids))
                 metadata_cursor = conn.execute(f'''
@@ -213,8 +216,7 @@ class PackageCacheModel:
     
     def get_by_section(self, backend: str, section: str) -> List[PackageCache]:
         """Get packages by section/category"""
-        import sqlite3
-        with sqlite3.connect(self.db.db_path) as conn:
+        with self.conn_mgr.connection() as conn:
             # Get all packages in section first
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 

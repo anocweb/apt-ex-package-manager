@@ -4,8 +4,8 @@ from models.category_model import CategoryModel, Category
 class CategoryCache:
     """Model-based cache system for package categories from different packaging systems"""
     
-    def __init__(self, logging_service=None):
-        self.model = CategoryModel()
+    def __init__(self, connection_manager, logging_service=None):
+        self.model = CategoryModel(connection_manager)
         self.logger = logging_service.get_logger('cache.category') if logging_service else None
     
     def log(self, message):
@@ -96,12 +96,18 @@ class CategoryCache:
             self.log(f"Cleared {count} cached categories for {system}")
         else:
             # Clear all - delete all root categories (children cascade)
-            import sqlite3
-            with sqlite3.connect(self.model.db.db_path) as conn:
+            with self.model.conn_mgr.connection() as conn:
                 conn.execute('DELETE FROM category_cache WHERE parent_id IS NULL')
-                conn.commit()
             self.log("Cleared all cached categories")
     
     def is_cache_valid(self, system: str, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        return self.model.db.is_cache_valid(system, max_age_hours)
+        with self.model.conn_mgr.connection() as conn:
+            cursor = conn.execute('''
+                SELECT 1 FROM category_cache 
+                WHERE backend = ? 
+                AND datetime(last_updated) > datetime('now', '-{} hours')
+                LIMIT 1
+            '''.format(max_age_hours), (system,))
+            
+            return cursor.fetchone() is not None

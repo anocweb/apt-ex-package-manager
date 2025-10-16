@@ -2,7 +2,8 @@ from models.package_model import Package
 from typing import List, Set
 
 class APTController:
-    def __init__(self, logging_service=None):
+    def __init__(self, connection_manager=None, logging_service=None):
+        self.connection_manager = connection_manager
         self.logger = logging_service.get_logger('apt') if logging_service else None
     
     def log(self, message):

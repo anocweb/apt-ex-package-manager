@@ -6,6 +6,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from views.main_view import MainView
 from controllers.package_manager import PackageManager
+from cache.database import DatabaseManager
 
 def main():
     parser = argparse.ArgumentParser(description='Apt-Ex Package Manager')
@@ -44,8 +45,15 @@ def main():
     if args.dev_outline:
         app.setStyleSheet("* { border: 1px solid red; }")
     
-    package_manager = PackageManager()
-    main_view = MainView(package_manager, dev_logging=args.dev_logging, stdout_log_level=args.stdout_log_level)
+    # Initialize logging service first
+    from services.logging_service import LoggingService
+    logging_service = LoggingService(stdout_log_level=args.stdout_log_level)
+    
+    # Initialize database manager with connection pooling at startup
+    db_manager = DatabaseManager(logging_service=logging_service)
+    
+    package_manager = PackageManager(db_manager.connection_manager, logging_service)
+    main_view = MainView(package_manager, db_manager.connection_manager, dev_logging=args.dev_logging, stdout_log_level=args.stdout_log_level)
     
     # Auto-open log window if --dev-logging is specified
     if args.dev_logging:
@@ -59,7 +67,11 @@ def main():
     # Show main window last so it appears in front
     main_view.show()
     
-    sys.exit(app.exec())
+    try:
+        sys.exit(app.exec())
+    finally:
+        # Clean up database connections on exit
+        db_manager.close()
 
 if __name__ == "__main__":
     main() 

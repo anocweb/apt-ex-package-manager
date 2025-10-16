@@ -2,28 +2,30 @@ import sqlite3
 import os
 from pathlib import Path
 from typing import Optional
+from cache.connection_manager import SQLiteConnectionManager
 
 class DatabaseManager:
     """SQLite database manager for caching package data"""
     
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, logging_service=None):
         if db_path is None:
             cache_dir = Path.home() / '.cache' / 'apt-ex-package-manager'
             cache_dir.mkdir(parents=True, exist_ok=True)
             db_path = cache_dir / 'cache.db'
         
         self.db_path = str(db_path)
+        self.connection_manager = SQLiteConnectionManager(self.db_path, logging_service=logging_service)
         self.init_database()
     
     def init_database(self):
         """Initialize database and create tables if they don't exist"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             # Category cache table
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS category_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    backend TEXT NOT NULL,
-                    name TEXT NOT NULL,
+                    backend TEXT(20) NOT NULL,
+                    name TEXT(100) NOT NULL,
                     parent_id INTEGER,
                     package_count INTEGER DEFAULT 0,
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -36,21 +38,21 @@ class DatabaseManager:
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS package_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    backend TEXT NOT NULL,
-                    package_id TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    version TEXT,
-                    description TEXT,
-                    summary TEXT,
-                    section TEXT,
-                    architecture TEXT,
+                    backend TEXT(20) NOT NULL,
+                    package_id TEXT(100) NOT NULL,
+                    name TEXT(100) NOT NULL,
+                    version TEXT(50),
+                    description TEXT(1000),
+                    summary TEXT(200),
+                    section TEXT(50),
+                    architecture TEXT(20),
                     size INTEGER,
                     installed_size INTEGER,
-                    maintainer TEXT,
-                    homepage TEXT,
-                    license TEXT,
-                    source_url TEXT,
-                    icon_url TEXT,
+                    maintainer TEXT(100),
+                    homepage TEXT(200),
+                    license TEXT(50),
+                    source_url TEXT(200),
+                    icon_url TEXT(200),
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(backend, package_id)
                 )
@@ -61,37 +63,66 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS package_metadata (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     package_cache_id INTEGER NOT NULL,
-                    key TEXT NOT NULL,
-                    value TEXT,
+                    key TEXT(50) NOT NULL,
+                    value TEXT(500),
                     FOREIGN KEY (package_cache_id) REFERENCES package_cache (id) ON DELETE CASCADE,
                     UNIQUE(package_cache_id, key)
                 )
             ''')
             
+            # Create performance indexes
+            self._create_indexes(conn)
             conn.commit()
+    
+    def _create_indexes(self, conn):
+        """Create performance indexes"""
+        indexes = [
+            # Category indexes
+            'CREATE INDEX IF NOT EXISTS idx_category_backend ON category_cache(backend)',
+            'CREATE INDEX IF NOT EXISTS idx_category_parent ON category_cache(parent_id)',
+            'CREATE INDEX IF NOT EXISTS idx_category_updated ON category_cache(last_updated)',
+            
+            # Package indexes
+            'CREATE INDEX IF NOT EXISTS idx_package_backend ON package_cache(backend)',
+            'CREATE INDEX IF NOT EXISTS idx_package_name ON package_cache(name)',
+            'CREATE INDEX IF NOT EXISTS idx_package_section ON package_cache(section)',
+            'CREATE INDEX IF NOT EXISTS idx_package_updated ON package_cache(last_updated)',
+            'CREATE INDEX IF NOT EXISTS idx_package_search ON package_cache(name, description)',
+            
+            # Metadata indexes
+            'CREATE INDEX IF NOT EXISTS idx_metadata_package ON package_metadata(package_cache_id)',
+            'CREATE INDEX IF NOT EXISTS idx_metadata_key ON package_metadata(key)',
+        ]
+        
+        for index_sql in indexes:
+            conn.execute(index_sql)
     
 
     
     def is_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             cursor = conn.execute('''
-                SELECT COUNT(*) FROM category_cache 
+                SELECT 1 FROM category_cache 
                 WHERE backend = ? 
                 AND datetime(last_updated) > datetime('now', '-{} hours')
+                LIMIT 1
             '''.format(max_age_hours), (backend,))
             
-            count = cursor.fetchone()[0]
-            return count > 0
+            return cursor.fetchone() is not None
     
     def is_package_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
         """Check if package cache is still valid"""
-        with sqlite3.connect(self.db_path) as conn:
+        with self.connection_manager.connection() as conn:
             cursor = conn.execute('''
-                SELECT COUNT(*) FROM package_cache 
+                SELECT 1 FROM package_cache 
                 WHERE backend = ? 
                 AND datetime(last_updated) > datetime('now', '-{} hours')
+                LIMIT 1
             '''.format(max_age_hours), (backend,))
             
-            count = cursor.fetchone()[0]
-            return count > 0
+            return cursor.fetchone() is not None
+    
+    def close(self):
+        """Close connection manager"""
+        self.connection_manager.close_all()
