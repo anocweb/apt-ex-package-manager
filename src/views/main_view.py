@@ -915,92 +915,11 @@ class MainView(QMainWindow):
     
     def create_package_list_item(self, package):
         """Create a KDE Discover-style package list item"""
-        from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame
-        from PyQt6.QtCore import Qt
+        from widgets.package_list_item import PackageListItem
         
-        # Debug package attributes
-        self.logger.info(f"Creating package item for: {type(package)}")
-        if hasattr(package, '__dict__'):
-            self.logger.debug("Package details", data=package.__dict__)
-        else:
-            attrs = [attr for attr in dir(package) if not attr.startswith('_')]
-            self.logger.debug("Package attributes", data=attrs)
-        
-        # Main container
-        item_widget = QFrame()
-        item_widget.setFrameStyle(QFrame.Shape.Box)
-        item_widget.setStyleSheet("""
-            QFrame {
-                background-color: palette(base);
-                border: 1px solid palette(mid);
-                border-radius: 8px;
-                padding: 8px;
-                margin: 2px;
-            }
-            QFrame:hover {
-                background-color: palette(alternate-base);
-            }
-        """)
-        item_widget.setFixedHeight(80)
-        
-        # Main horizontal layout
-        main_layout = QHBoxLayout(item_widget)
-        main_layout.setSpacing(12)
-        
-        # Icon placeholder
-        icon_label = QLabel("📦")
-        icon_label.setFixedSize(48, 48)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px;")
-        main_layout.addWidget(icon_label)
-        
-        # Content area
-        content_layout = QVBoxLayout()
-        content_layout.setSpacing(2)
-        
-        # Package name
-        name = getattr(package, 'name', '') or getattr(package, 'package_id', 'Unknown Package')
-        self.logger.info(f"Package name: '{name}'")
-        name_label = QLabel(name)
-        name_label.setStyleSheet("font-size: 16px; font-weight: bold; color: palette(text);")
-        content_layout.addWidget(name_label)
-        
-        # Package description
-        description = getattr(package, 'description', '') or getattr(package, 'summary', '') or 'No description available'
-        self.logger.info(f"Package description: '{description[:50]}...'")
-        desc_text = description[:80] + "..." if len(description) > 80 else description
-        desc_label = QLabel(desc_text)
-        desc_label.setStyleSheet("font-size: 12px; color: palette(mid);")
-        desc_label.setWordWrap(True)
-        content_layout.addWidget(desc_label)
-        
-        # Rating placeholder (stars)
-        rating_label = QLabel("★★★★☆ 4.2 ratings")
-        rating_label.setStyleSheet("font-size: 11px; color: palette(mid);")
-        content_layout.addWidget(rating_label)
-        
-        main_layout.addLayout(content_layout)
-        
-        # Right side - Install button
-        install_btn = QPushButton("⬇ Install")
-        install_btn.setFixedSize(80, 32)
-        install_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3daee9;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
-        package_name = getattr(package, 'name', '') or getattr(package, 'package_id', '')
-        install_btn.clicked.connect(lambda: self.install_package(package_name))
-        main_layout.addWidget(install_btn)
-        
-        return item_widget
+        item = PackageListItem(package)
+        item.install_requested.connect(self.install_package)
+        return item
     
     def view_categories(self):
         """Show categories view"""
@@ -1065,6 +984,18 @@ class MainView(QMainWindow):
                 count += len(section_packages)
             
             button.setText(f"{icon_text} ({count})")
+            button.setEnabled(count > 0)
+            
+            # Apply disabled styling using system colors
+            if count == 0:
+                button.setStyleSheet("""
+                    QPushButton:disabled {
+                        color: palette(disabled, text);
+                        background-color: palette(disabled, button);
+                    }
+                """)
+            else:
+                button.setStyleSheet("")  # Clear custom styling for enabled buttons
     
     def _execute_view_categories(self):
         """Execute view categories (used directly or after cache update)"""
