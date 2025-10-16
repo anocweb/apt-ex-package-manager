@@ -1,14 +1,16 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame
 from PyQt6.QtCore import Qt, pyqtSignal
+from services.odrs_service import ODRSService
 
 class PackageListItem(QFrame):
     """Reusable KDE Discover-style package list item widget"""
     
     install_requested = pyqtSignal(str)  # Emits package name when install is clicked
     
-    def __init__(self, package, parent=None):
+    def __init__(self, package, odrs_service=None, parent=None):
         super().__init__(parent)
         self.package = package
+        self.odrs_service = odrs_service or ODRSService()
         self.setup_ui()
     
     def setup_ui(self):
@@ -100,8 +102,8 @@ class PackageListItem(QFrame):
         desc_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         content_layout.addWidget(desc_label)
         
-        # Rating placeholder
-        rating_label = QLabel('<span style="color: #FFD700;">★★★★</span><span style="color: #B8860B;">☆</span><span style="color: palette(window-text);"> 4.2 ratings</span>')
+        # Rating from ODRS - start with collecting state to avoid blocking
+        rating_label = QLabel('<span style="color: palette(window-text);">Collecting rating...</span>')
         if dev_outline:
             rating_label.setStyleSheet("font-size: 11px; background: transparent; border: 1px solid red; padding: 0px;")
         else:
@@ -164,3 +166,59 @@ class PackageListItem(QFrame):
         right_layout.addWidget(install_btn)
         
         main_layout.addLayout(right_layout)
+        
+        # Store rating label reference for updates
+        self.rating_label = rating_label
+        
+        # Update rating display after widget creation (non-blocking)
+        # Skip rating updates when dev logging is active to prevent lockups
+        if not dev_outline:
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, self.update_rating_display)
+    
+    def update_rating_display(self):
+        """Update rating display with fresh data"""
+        rating_text = self._get_rating_text()
+        self.rating_label.setText(rating_text)
+    
+    def _get_rating_text(self) -> str:
+        """Get formatted rating text from ODRS"""
+        from settings.app_settings import AppSettings
+        import sys
+        
+        # Skip rating lookups when dev logging is active
+        if '--dev-logging' in sys.argv:
+            return '<span style="color: palette(mid);">Dev Mode</span>'
+        
+        # State 1: ODRS disabled
+        settings = AppSettings()
+        if not settings.get_odrs_enabled():
+            return '<span style="color: palette(mid);">Ratings Disabled</span>'
+        
+        # State 2: No ODRS service available
+        if not self.odrs_service:
+            return '<span style="color: palette(window-text);">Collecting rating...</span>'
+        
+        try:
+            package_name = getattr(self.package, 'name', '') or getattr(self.package, 'package_id', '')
+            app_id = self.odrs_service.map_package_to_app_id(package_name)
+            rating = self.odrs_service._get_cached_rating(app_id)
+            
+            if rating is None:
+                # State 2: No cached rating
+                return '<span style="color: palette(window-text);">Collecting rating...</span>'
+            elif rating.review_count > 0:
+                # State 3: Has rating data
+                filled_stars = int(rating.rating)
+                empty_stars = 5 - filled_stars
+                stars_html = (
+                    f'<span style="color: #FFD700;">{"★" * filled_stars}</span>' +
+                    f'<span style="color: #B8860B;">{"☆" * empty_stars}</span>'
+                )
+                return f'{stars_html}<span style="color: palette(window-text);"> {rating.rating} ({rating.review_count} reviews)</span>'
+            else:
+                # State 4: No rating available (cached as 0)
+                empty_stars = '☆' * 5
+                return f'<span style="color: #B8860B;">{empty_stars}</span><span style="color: palette(mid);"> No Ratings Available</span>'
+        except Exception:
+            return '<span style="color: palette(window-text);">Collecting rating...</span>'

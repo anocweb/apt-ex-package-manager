@@ -278,6 +278,45 @@
         </widget>
        </item>
        <item>
+        <widget class="QWidget" name="odrsSection" native="true">
+         <layout class="QVBoxLayout" name="odrsSectionLayout">
+          <item>
+           <widget class="QLabel" name="odrsTitle">
+            <property name="text">
+             <string>Ratings &amp; Reviews</string>
+            </property>
+            <property name="styleSheet">
+             <string>font-weight: bold; font-size: 14px;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="odrsEnabledCheckbox">
+            <property name="text">
+             <string>Enable Open Desktop Ratings Service (ODRS)</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="odrsDescription">
+            <property name="text">
+             <string>Allow the application to connect to GNOME's Open Desktop Ratings Service to display user ratings and reviews for applications.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>color: palette(mid); font-size: 11px;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

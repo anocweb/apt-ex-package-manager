@@ -33,6 +33,10 @@ class MainView(QMainWindow):
         # Get named logger for UI operations
         self.logger = self.logging_service.get_logger('ui')
         
+        # Pre-register ODRS and rating cache loggers
+        self.logging_service.get_logger('odrs')
+        self.logging_service.get_logger('rating_cache')
+        
         # Enable debug logging if requested
         if dev_logging:
             import logging
@@ -90,7 +94,12 @@ class MainView(QMainWindow):
         
         self.package_layout = QGridLayout(home_panel.package_container)
         self.content_layouts['installed'] = QGridLayout(installed_panel.installedContainer)
-        self.content_layouts['category'] = QGridLayout(category_panel.categoryContainer)
+        
+        # Use existing layout or create new one for category container
+        if category_panel.categoryContainer.layout():
+            self.content_layouts['category'] = category_panel.categoryContainer.layout()
+        else:
+            self.content_layouts['category'] = QGridLayout(category_panel.categoryContainer)
         
         # Connect search functionality from home panel
         home_panel.search_input.textChanged.connect(self.search_packages)
@@ -304,6 +313,7 @@ class MainView(QMainWindow):
             try:
                 self.populate_settings_panel()
                 self.update_default_repository_ui()
+                self.connect_settings_buttons()  # Ensure connections are made
                 self.statusbar.showMessage("Settings panel", 2000)
             except Exception as e:
                 self.logging_service.error(f"Failed to populate settings panel: {e}")
@@ -338,8 +348,14 @@ class MainView(QMainWindow):
         self.loaded_count = 0
         self.batch_size = 20
         
-        # Clear display and load first batch
+        # Clear display and reset scroll position
         self.clear_category_display()
+        
+        # Reset scroll position to top
+        category_panel = self.panels['category']
+        scroll_area = category_panel.categoryScrollArea
+        scroll_area.verticalScrollBar().setValue(0)
+        
         self.load_next_batch()
         self.statusbar.showMessage(f"Loading {category} packages", 2000)
     
@@ -416,12 +432,11 @@ class MainView(QMainWindow):
         if self.current_category == 'all':
             cached_packages = self.cache_manager.get_packages('apt') or []
         else:
-            cached_packages = []
-            for section in sections:
-                from models.package_cache_model import PackageCacheModel
-                package_cache_model = PackageCacheModel()
-                section_packages = package_cache_model.get_by_section('apt', section) or []
-                cached_packages.extend(section_packages)
+            # Get all packages at once and filter by sections
+            from models.package_cache_model import PackageCacheModel
+            package_cache_model = PackageCacheModel()
+            all_packages = package_cache_model.get_by_backend('apt') or []
+            cached_packages = [pkg for pkg in all_packages if pkg.section in sections]
         
         # Get next batch
         start_idx = self.loaded_count
@@ -432,12 +447,24 @@ class MainView(QMainWindow):
             category_panel = self.panels['category']
             layout = category_panel.packageListLayout
             
-            # Add batch items to layout
+            # Store package items for rating updates
+            batch_items = []
             for package in batch:
                 package_item = self.create_package_list_item(package)
                 layout.addWidget(package_item)
+                batch_items.append((package, package_item))
             
             self.loaded_count += len(batch)
+            
+            # Skip ODRS rating fetch when dev logging is active to prevent lockups
+            dev_logging = hasattr(self, 'logging_service') and self.logging_service.app_log_handler.level <= 10  # DEBUG level
+            if not dev_logging and self.app_settings.get_odrs_enabled() and hasattr(self, 'odrs_service') and self.odrs_service:
+                def update_ratings(ratings):
+                    for package, item in batch_items:
+                        item.update_rating_display()
+                
+                app_ids = [self.odrs_service.map_package_to_app_id(getattr(pkg, 'name', '') or getattr(pkg, 'package_id', '')) for pkg in batch]
+                self.odrs_service.get_ratings_async(app_ids, update_ratings)
             
             # Setup scroll-based loading if more packages available
             if end_idx < len(cached_packages):
@@ -584,6 +611,12 @@ class MainView(QMainWindow):
                 settings_panel.makeDefaultApt.clicked.connect(
                     lambda: self.set_default_repository('apt')
                 )
+            
+            # Connect ODRS checkbox
+            if hasattr(settings_panel, 'odrsEnabledCheckbox'):
+                settings_panel.odrsEnabledCheckbox.toggled.connect(self.set_odrs_enabled)
+                # Set initial state
+                settings_panel.odrsEnabledCheckbox.setChecked(self.app_settings.get_odrs_enabled())
     
     def open_apt_sources(self):
         """Open /etc/apt/ folder in default file manager"""
@@ -627,6 +660,21 @@ class MainView(QMainWindow):
             else:
                 settings_panel.makeDefaultApt.setText('☆ Make Default')
                 settings_panel.makeDefaultApt.setEnabled(True)
+    
+    def set_odrs_enabled(self, enabled: bool):
+        """Set ODRS enabled setting"""
+        self.app_settings.set_odrs_enabled(enabled)
+        # Clear ODRS service to force recreation with new setting
+        if hasattr(self, 'odrs_service'):
+            delattr(self, 'odrs_service')
+        self.logging_service.info(f"ODRS {'enabled' if enabled else 'disabled'}")
+    
+    def set_status_message(self, message: str):
+        """Set status bar message (used by ODRS service)"""
+        if message:
+            self.statusbar.showMessage(message)
+        else:
+            self.statusbar.clearMessage()
     
 
     
@@ -917,7 +965,15 @@ class MainView(QMainWindow):
         """Create a KDE Discover-style package list item"""
         from widgets.package_list_item import PackageListItem
         
-        item = PackageListItem(package)
+        # Create ODRS service if not exists and ODRS is enabled
+        if not hasattr(self, 'odrs_service'):
+            if self.app_settings.get_odrs_enabled():
+                from services.odrs_service import ODRSService
+                self.odrs_service = ODRSService(status_callback=self.set_status_message, logging_service=self.logging_service)
+            else:
+                self.odrs_service = None
+        
+        item = PackageListItem(package, self.odrs_service)
         item.install_requested.connect(self.install_package)
         return item
     

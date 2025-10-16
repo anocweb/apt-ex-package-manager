@@ -20,7 +20,8 @@ class AppSettings:
             'repository_preferences': {},
             'ui_theme': 'system',
             'file_logging_enabled': False,
-            'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs')
+            'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs'),
+            'odrs_enabled': True
         }
         
         for key, value in defaults.items():
@@ -122,3 +123,12 @@ class AppSettings:
     def set_log_directory(self, directory: str):
         """Set log directory path"""
         self.set('log_directory', directory)
+    
+    def get_odrs_enabled(self) -> bool:
+        """Get ODRS (Open Desktop Ratings Service) preference"""
+        value = self.get('odrs_enabled', True)
+        return value if isinstance(value, bool) else str(value).lower() == 'true'
+    
+    def set_odrs_enabled(self, enabled: bool):
+        """Set ODRS (Open Desktop Ratings Service) preference"""
+        self.set('odrs_enabled', enabled)

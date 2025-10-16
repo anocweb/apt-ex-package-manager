@@ -128,6 +128,7 @@ class PackageCacheModel:
         """Get all packages for a backend"""
         import sqlite3
         with sqlite3.connect(self.db.db_path) as conn:
+            # Get all packages first
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
                        section, architecture, size, installed_size, maintainer, homepage, 
@@ -137,14 +138,32 @@ class PackageCacheModel:
             ''', (backend,))
             
             packages = []
+            package_ids = []
             for row in cursor.fetchall():
                 package = PackageCache(*row)
-                # Get metadata for each package
-                metadata_cursor = conn.execute('''
-                    SELECT key, value FROM package_metadata WHERE package_cache_id = ?
-                ''', (package.id,))
-                package.metadata = dict(metadata_cursor.fetchall())
+                package.metadata = {}
                 packages.append(package)
+                package_ids.append(package.id)
+            
+            # Get all metadata in one query if there are packages
+            if package_ids:
+                placeholders = ','.join('?' * len(package_ids))
+                metadata_cursor = conn.execute(f'''
+                    SELECT package_cache_id, key, value 
+                    FROM package_metadata 
+                    WHERE package_cache_id IN ({placeholders})
+                ''', package_ids)
+                
+                # Group metadata by package ID
+                metadata_by_id = {}
+                for pkg_id, key, value in metadata_cursor.fetchall():
+                    if pkg_id not in metadata_by_id:
+                        metadata_by_id[pkg_id] = {}
+                    metadata_by_id[pkg_id][key] = value
+                
+                # Assign metadata to packages
+                for package in packages:
+                    package.metadata = metadata_by_id.get(package.id, {})
             
             return packages
     
@@ -152,6 +171,7 @@ class PackageCacheModel:
         """Search packages by name or description"""
         import sqlite3
         with sqlite3.connect(self.db.db_path) as conn:
+            # Get all matching packages first
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
                        section, architecture, size, installed_size, maintainer, homepage, 
@@ -162,14 +182,32 @@ class PackageCacheModel:
             ''', (backend, f'%{query}%', f'%{query}%'))
             
             packages = []
+            package_ids = []
             for row in cursor.fetchall():
                 package = PackageCache(*row)
-                # Get metadata for each package
-                metadata_cursor = conn.execute('''
-                    SELECT key, value FROM package_metadata WHERE package_cache_id = ?
-                ''', (package.id,))
-                package.metadata = dict(metadata_cursor.fetchall())
+                package.metadata = {}
                 packages.append(package)
+                package_ids.append(package.id)
+            
+            # Get all metadata in one query if there are packages
+            if package_ids:
+                placeholders = ','.join('?' * len(package_ids))
+                metadata_cursor = conn.execute(f'''
+                    SELECT package_cache_id, key, value 
+                    FROM package_metadata 
+                    WHERE package_cache_id IN ({placeholders})
+                ''', package_ids)
+                
+                # Group metadata by package ID
+                metadata_by_id = {}
+                for pkg_id, key, value in metadata_cursor.fetchall():
+                    if pkg_id not in metadata_by_id:
+                        metadata_by_id[pkg_id] = {}
+                    metadata_by_id[pkg_id][key] = value
+                
+                # Assign metadata to packages
+                for package in packages:
+                    package.metadata = metadata_by_id.get(package.id, {})
             
             return packages
     
@@ -177,6 +215,7 @@ class PackageCacheModel:
         """Get packages by section/category"""
         import sqlite3
         with sqlite3.connect(self.db.db_path) as conn:
+            # Get all packages in section first
             cursor = conn.execute('''
                 SELECT id, backend, package_id, name, version, description, summary, 
                        section, architecture, size, installed_size, maintainer, homepage, 
@@ -187,13 +226,31 @@ class PackageCacheModel:
             ''', (backend, section))
             
             packages = []
+            package_ids = []
             for row in cursor.fetchall():
                 package = PackageCache(*row)
-                # Get metadata for each package
-                metadata_cursor = conn.execute('''
-                    SELECT key, value FROM package_metadata WHERE package_cache_id = ?
-                ''', (package.id,))
-                package.metadata = dict(metadata_cursor.fetchall())
+                package.metadata = {}
                 packages.append(package)
+                package_ids.append(package.id)
+            
+            # Get all metadata in one query if there are packages
+            if package_ids:
+                placeholders = ','.join('?' * len(package_ids))
+                metadata_cursor = conn.execute(f'''
+                    SELECT package_cache_id, key, value 
+                    FROM package_metadata 
+                    WHERE package_cache_id IN ({placeholders})
+                ''', package_ids)
+                
+                # Group metadata by package ID
+                metadata_by_id = {}
+                for pkg_id, key, value in metadata_cursor.fetchall():
+                    if pkg_id not in metadata_by_id:
+                        metadata_by_id[pkg_id] = {}
+                    metadata_by_id[pkg_id][key] = value
+                
+                # Assign metadata to packages
+                for package in packages:
+                    package.metadata = metadata_by_id.get(package.id, {})
             
             return packages

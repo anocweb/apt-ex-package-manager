@@ -14,12 +14,23 @@ class Ui_AboutPanel(object):
         AboutPanel.setObjectName("AboutPanel")
         AboutPanel.resize(750, 600)
         self.aboutLayout = QtWidgets.QVBoxLayout(AboutPanel)
-        self.aboutLayout.setSpacing(0)
+        self.aboutLayout.setSpacing(20)
         self.aboutLayout.setObjectName("aboutLayout")
         self.aboutContent = QtWidgets.QLabel(parent=AboutPanel)
         self.aboutContent.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.aboutContent.setObjectName("aboutContent")
         self.aboutLayout.addWidget(self.aboutContent)
+        self.referencesTitle = QtWidgets.QLabel(parent=AboutPanel)
+        self.referencesTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.referencesTitle.setObjectName("referencesTitle")
+        self.aboutLayout.addWidget(self.referencesTitle)
+        self.referencesContent = QtWidgets.QLabel(parent=AboutPanel)
+        self.referencesContent.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+        self.referencesContent.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        self.referencesContent.setOpenExternalLinks(True)
+        self.referencesContent.setWordWrap(True)
+        self.referencesContent.setObjectName("referencesContent")
+        self.aboutLayout.addWidget(self.referencesContent)
 
         self.retranslateUi(AboutPanel)
         QtCore.QMetaObject.connectSlotsByName(AboutPanel)
@@ -27,3 +38,24 @@ class Ui_AboutPanel(object):
     def retranslateUi(self, AboutPanel):
         _translate = QtCore.QCoreApplication.translate
         self.aboutContent.setText(_translate("AboutPanel", "A modern package manager for Linux systems\\nVersion 1.0"))
+        self.referencesTitle.setText(_translate("AboutPanel", "<h3>References & Acknowledgments</h3>"))
+        self.referencesContent.setText(_translate("AboutPanel", "<p><b>PyQt6</b> - Cross-platform GUI toolkit<br/>\n"
+"<a href=\"https://www.riverbankcomputing.com/software/pyqt/\">https://www.riverbankcomputing.com/software/pyqt/</a></p>\n"
+"\n"
+"<p><b>GNOME ODRS</b> - Open Desktop Ratings Service<br/>\n"
+"<a href=\"https://odrs.gnome.org/\">https://odrs.gnome.org/</a></p>\n"
+"\n"
+"<p><b>KDE Discover</b> - UI/UX Design Inspiration<br/>\n"
+"<a href=\"https://apps.kde.org/discover/\">https://apps.kde.org/discover/</a></p>\n"
+"\n"
+"<p><b>KDE Frameworks</b> - Icon Theme and Resources<br/>\n"
+"<a href=\"https://develop.kde.org/frameworks/\">https://develop.kde.org/frameworks/</a></p>\n"
+"\n"
+"<p><b>APT</b> - Advanced Package Tool<br/>\n"
+"<a href=\"https://wiki.debian.org/Apt\">https://wiki.debian.org/Apt</a></p>\n"
+"\n"
+"<p><b>Flatpak</b> - Application Distribution Framework<br/>\n"
+"<a href=\"https://flatpak.org/\">https://flatpak.org/</a></p>\n"
+"\n"
+"<p><b>AppImage</b> - Portable Application Format<br/>\n"
+"<a href=\"https://appimage.org/\">https://appimage.org/</a></p>"))
