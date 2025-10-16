@@ -4,9 +4,9 @@ from models.package_cache_model import PackageCacheModel, PackageCache as Packag
 class PackageCache:
     """Package cache interface"""
     
-    def __init__(self, logger=None):
+    def __init__(self, logging_service=None):
         self.model = PackageCacheModel()
-        self.logger = logger
+        self.logger = logging_service.get_logger('cache.package') if logging_service else None
     
     def log(self, message):
         """Log message if logger is available"""
@@ -15,7 +15,7 @@ class PackageCache:
     
     def get_packages(self, backend: str) -> Optional[List[PackageCacheData]]:
         """Get cached packages for backend"""
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"Getting packages for {backend}")
         if not self.is_cache_valid(backend):
             self.log(f"Package cache expired for {backend}")
@@ -50,7 +50,7 @@ class PackageCache:
     
     def clear_cache(self, backend: Optional[str] = None):
         """Clear cache for specific backend or all backends"""
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"Clearing package cache for {backend or 'all backends'}")
         if backend:
             packages = self.model.get_by_backend(backend)

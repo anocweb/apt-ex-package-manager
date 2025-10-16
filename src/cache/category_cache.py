@@ -4,9 +4,9 @@ from models.category_model import CategoryModel, Category
 class CategoryCache:
     """Model-based cache system for package categories from different packaging systems"""
     
-    def __init__(self, logger=None):
+    def __init__(self, logging_service=None):
         self.model = CategoryModel()
-        self.logger = logger
+        self.logger = logging_service.get_logger('cache.category') if logging_service else None
     
     def log(self, message):
         """Log message if logger is available"""
@@ -15,7 +15,7 @@ class CategoryCache:
     
     def get_categories(self, system: str) -> Optional[Dict]:
         """Get cached categories for packaging system"""
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"Getting categories for {system}")
         if not self.is_cache_valid(system):
             self.log(f"Category cache expired for {system}")
@@ -48,7 +48,7 @@ class CategoryCache:
     
     def set_categories(self, system: str, categories: Dict):
         """Cache categories for packaging system"""
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"Setting categories for {system}")
         self.log(f"Caching {len(categories)} categories for {system}")
         # Clear existing categories for this system
@@ -85,7 +85,7 @@ class CategoryCache:
     
     def clear_cache(self, system: Optional[str] = None):
         """Clear cache for specific system or all systems"""
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"Clearing cache for {system or 'all systems'}")
         if system:
             categories = self.model.get_by_backend(system)

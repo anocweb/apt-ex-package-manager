@@ -29,11 +29,14 @@ class MainView(QMainWindow):
         self.logging_service = LoggingService()
         self.logging_service.set_app_log_callback(self.add_log_message)
         
+        # Get named logger for UI operations
+        self.logger = self.logging_service.get_logger('ui')
+        
         # Enable debug logging if requested
         if dev_logging:
             import logging
             self.logging_service.app_log_handler.setLevel(logging.DEBUG)
-            self.logging_service.debug("Debug logging enabled")
+            self.logger.debug("Debug logging enabled")
         
         # Enable file logging if configured
         if self.app_settings.get_file_logging_enabled():
@@ -71,15 +74,15 @@ class MainView(QMainWindow):
             icon.addFile(icon_path, QSize(64, 64))
             self.setWindowIcon(icon)
         
-        self.logging_service.debug("Starting panel loading")
+        self.logger.debug("Starting panel loading")
         self.load_panels()
-        self.logging_service.debug("Starting UI setup")
+        self.logger.debug("Starting UI setup")
         self.setup_ui()
-        self.logging_service.debug("Restoring window state")
+        self.logger.debug("Restoring window state")
         self.restore_window_state()
 
     def setup_ui(self):
-        self.logging_service.debug("Setting up UI components")
+        self.logger.debug("Setting up UI components")
         # Setup content layouts from loaded panels
         home_panel = self.panels['home']
         installed_panel = self.panels['installed']
@@ -137,11 +140,13 @@ class MainView(QMainWindow):
         self.systemBtn.clicked.connect(lambda: (self.logging_service.debug("System button clicked"), self.select_category('system'))[1])
         self.utilitiesBtn.clicked.connect(lambda: (self.logging_service.debug("Utilities button clicked"), self.select_category('utilities'))[1])
         
+        # Category counts will be updated after cache population
+        
         # Connect View Categories button
         self.viewCategoriesBtn.clicked.connect(lambda: self.view_categories())
         
         # Add log to status messages
-        self.logging_service.info("Application started")
+        self.logger.info("Application started")
         
         # Set initial selection to home page
         self.select_page('home', 0)
@@ -152,6 +157,10 @@ class MainView(QMainWindow):
         
         # Populate caches on startup
         self.populate_caches_on_startup()
+        
+        # Update category counts if cache is already available
+        if hasattr(self, 'cache_manager') and self.cache_manager:
+            self.update_category_counts()
     
     def load_panels(self):
         """Load all panel UI files and add them to the content stack"""
@@ -178,23 +187,23 @@ class MainView(QMainWindow):
                 self.logging_service.error(f"Failed to load panel {panel_name}: {e}")
 
     def search_packages(self):
-        self.logging_service.debug("Search packages function called")
+        self.logger.debug("Search packages function called")
         home_panel = self.panels['home']
         query = home_panel.search_input.text()
         if query:
-            self.logging_service.info(f"Searching packages: {query}")
+            self.logger.info(f"Searching packages: {query}")
             self.current_packages = self.package_manager.search_packages(query)
         else:
             self.current_packages = self.package_manager.get_installed_packages()
         self.update_package_display()
 
     def load_initial_packages(self):
-        self.logging_service.debug("Loading initial packages")
+        self.logger.debug("Loading initial packages")
         self.current_packages = self.package_manager.get_installed_packages()
         self.update_package_display()
 
     def update_package_display(self):
-        self.logging_service.debug(f"Updating package display with {len(self.current_packages)} packages")
+        self.logger.debug(f"Updating package display with {len(self.current_packages)} packages")
         # Clear existing widgets
         for i in reversed(range(self.package_layout.count())):
             self.package_layout.itemAt(i).widget().setParent(None)
@@ -210,7 +219,7 @@ class MainView(QMainWindow):
                 row += 1
 
     def create_package_card(self, package):
-        self.logging_service.debug(f"Creating package card for {package.name}")
+        self.logger.debug(f"Creating package card for {package.name}")
         card = QWidget()
         card.setFixedSize(200, 120)
         card.setStyleSheet("QWidget { border: 1px solid gray; border-radius: 5px; padding: 5px; }")
@@ -232,7 +241,7 @@ class MainView(QMainWindow):
         return card
 
     def install_package(self, package_name):
-        self.logging_service.info(f"User requested install: {package_name}")
+        self.logger.info(f"User requested install: {package_name}")
         self.package_manager.install_package(package_name)
         self.statusbar.showMessage(f"Installing {package_name}...", 3000)
     
@@ -251,7 +260,7 @@ class MainView(QMainWindow):
         return 0
     
     def select_page(self, page_key, page_index=None):
-        self.logging_service.info(f"Navigated to {page_key} page")
+        self.logger.info(f"Navigated to {page_key} page")
         # Update button selection
         self.update_button_selection(page_key)
         
@@ -259,7 +268,7 @@ class MainView(QMainWindow):
         if page_index is None:
             page_index = self.get_panel_index(page_key)
         
-        self.logging_service.debug(f"Switching to panel index {page_index} for {page_key}")
+        self.logger.debug(f"Switching to panel index {page_index} for {page_key}")
         # Switch to the appropriate page
         self.contentStack.setCurrentIndex(page_index)
         
@@ -312,7 +321,7 @@ class MainView(QMainWindow):
         self._execute_category_selection(category)
     
     def _execute_category_selection(self, category):
-        """Execute category selection (used directly or after cache update)"""
+        """Execute category selection (cache-only with lazy loading)"""
         self.logging_service.info(f"Selected category: {category}")
         # Update button selection
         self.update_button_selection(category)
@@ -323,44 +332,16 @@ class MainView(QMainWindow):
         # Update page title for category
         self.pageTitle.setText(f"{category.title()} Packages")
         
-        # Load category packages from cache
-        from cache.package_cache import PackageCache
-        from models.package_cache_model import PackageCacheModel
-        
-        package_cache_model = PackageCacheModel()
-        self.logging_service.info(f"Loading packages for category: {category}")
-        
-        # Get section mapping for category
-        mapping = {
-            'games': ['games'],
-            'graphics': ['graphics'],
-            'internet': ['net', 'web', 'mail'],
-            'multimedia': ['sound', 'video'],
-            'office': ['editors', 'text', 'doc'],
-            'development': ['devel', 'libdevel', 'python', 'perl'],
-            'system': ['admin', 'base', 'kernel', 'shells'],
-            'utilities': ['utils', 'misc', 'otherosfs'],
-            'education': ['education', 'science'],
-            'accessibility': ['accessibility'],
-            'all': []
-        }
-        
-        sections = mapping.get(category, [])
+        # Store category for lazy loading
+        self.current_category = category
         self.current_packages = []
+        self.loaded_count = 0
+        self.batch_size = 20
         
-        if category == 'all':
-            # Get all packages
-            package_cache = PackageCache(logger=self.logging_service)
-            cached_packages = package_cache.get_packages('apt')
-            if cached_packages:
-                self.current_packages = cached_packages
-        else:
-            # Get packages by sections
-            for section in sections:
-                section_packages = package_cache_model.get_by_section('apt', section)
-                self.current_packages.extend(section_packages)
-        self.update_category_display()
-        self.statusbar.showMessage(f"Showing {category} packages", 2000)
+        # Clear display and load first batch
+        self.clear_category_display()
+        self.load_next_batch()
+        self.statusbar.showMessage(f"Loading {category} packages", 2000)
     
     def update_button_selection(self, selected_key):
         self.logging_service.debug(f"Updating button selection to {selected_key}")
@@ -393,8 +374,8 @@ class MainView(QMainWindow):
                 col = 0
                 row += 1
     
-    def update_category_display(self):
-        """Update category display with cached packages"""
+    def clear_category_display(self):
+        """Clear category display"""
         category_panel = self.panels['category']
         layout = category_panel.packageListLayout
         
@@ -403,24 +384,105 @@ class MainView(QMainWindow):
             child = layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+    
+    def load_next_batch(self):
+        """Load next batch of packages for current category (cache-only)"""
+        if not hasattr(self, 'current_category'):
+            return
         
-        # Get packages from cache
-        from cache.package_cache import PackageCache
-        package_cache = PackageCache(logger=self.logging_service)
-        cached_packages = package_cache.get_packages('apt')
+        # Get section mapping for category
+        mapping = {
+            'games': ['games'],
+            'graphics': ['graphics'],
+            'internet': ['net', 'web', 'mail'],
+            'multimedia': ['sound', 'video'],
+            'office': ['editors', 'text', 'doc'],
+            'development': ['devel', 'libdevel', 'python', 'perl'],
+            'system': ['admin', 'base', 'kernel', 'shells'],
+            'utilities': ['utils', 'misc', 'otherosfs'],
+            'education': ['education', 'science'],
+            'accessibility': ['accessibility'],
+            'all': []
+        }
         
-        if cached_packages:
-            # Filter by current category if needed
-            display_packages = cached_packages[:20]  # Show first 20
+        sections = mapping.get(self.current_category, [])
+        
+        # Get packages from cache only
+        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+            self.statusbar.showMessage("No cached data available", 3000)
+            return
+        
+        if self.current_category == 'all':
+            cached_packages = self.cache_manager.get_packages('apt') or []
+        else:
+            cached_packages = []
+            for section in sections:
+                from models.package_cache_model import PackageCacheModel
+                package_cache_model = PackageCacheModel()
+                section_packages = package_cache_model.get_by_section('apt', section) or []
+                cached_packages.extend(section_packages)
+        
+        # Get next batch
+        start_idx = self.loaded_count
+        end_idx = start_idx + self.batch_size
+        batch = cached_packages[start_idx:end_idx]
+        
+        if batch:
+            category_panel = self.panels['category']
+            layout = category_panel.packageListLayout
             
-            for package in display_packages:
+            # Add batch items to layout
+            for package in batch:
                 package_item = self.create_package_list_item(package)
                 layout.addWidget(package_item)
+            
+            self.loaded_count += len(batch)
+            
+            # Setup scroll-based loading if more packages available
+            if end_idx < len(cached_packages):
+                self.setup_scroll_loading(cached_packages)
+        else:
+            self.statusbar.showMessage("No packages found in cache", 3000)
+    
+    def setup_scroll_loading(self, all_packages):
+        """Setup scroll-based lazy loading"""
+        category_panel = self.panels['category']
+        scroll_area = category_panel.categoryScrollArea
         
-        # Add spacer at the end
-        from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
-        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        layout.addItem(spacer)
+        # Store packages for loading
+        self.all_category_packages = all_packages
+        
+        # Connect scroll event
+        scroll_area.verticalScrollBar().valueChanged.connect(self.on_scroll_changed)
+    
+    def on_scroll_changed(self, value):
+        """Load more packages when near bottom of scroll"""
+        if not hasattr(self, 'all_category_packages'):
+            return
+        
+        category_panel = self.panels['category']
+        scroll_bar = category_panel.categoryScrollArea.verticalScrollBar()
+        
+        # Load more when within 100 pixels of bottom
+        if value >= scroll_bar.maximum() - 100:
+            if self.loaded_count < len(self.all_category_packages):
+                self.load_more_packages()
+    
+    def load_more_packages(self):
+        """Load next batch of packages"""
+        start_idx = self.loaded_count
+        end_idx = start_idx + self.batch_size
+        batch = self.all_category_packages[start_idx:end_idx]
+        
+        if batch:
+            category_panel = self.panels['category']
+            layout = category_panel.packageListLayout
+            
+            for package in batch:
+                package_item = self.create_package_list_item(package)
+                layout.addWidget(package_item)
+            
+            self.loaded_count += len(batch)
     
     def populate_settings_panel(self):
         """Populate settings panel with source data"""
@@ -625,15 +687,13 @@ class MainView(QMainWindow):
     def populate_caches_on_startup(self):
         """Populate caches if empty or expired on application startup"""
         from PyQt6.QtCore import QThread, pyqtSignal
-        from cache.category_cache import CategoryCache
-        from cache.package_cache import PackageCache
+        from cache.cache_manager import CacheManager
         
-        category_cache = CategoryCache(logger=self.logging_service)
-        package_cache = PackageCache(logger=self.logging_service)
+        self.cache_manager = CacheManager(logging_service=self.logging_service)
         
         # Check what needs updating
-        update_categories = not category_cache.is_cache_valid('apt')
-        update_packages = not package_cache.is_cache_valid('apt')
+        update_categories = self.cache_manager.needs_category_update('apt')
+        update_packages = self.cache_manager.needs_package_update('apt')
         
         if update_categories or update_packages:
             self.cache_updating = True
@@ -660,12 +720,12 @@ class MainView(QMainWindow):
                 def run(self):
                     try:
                         from controllers.apt_controller import APTController
-                        apt_controller = APTController(logger=self.logging_service)
+                        apt_controller = APTController(logging_service=self.logging_service)
                         
                         # Update categories if needed
                         if self.update_categories:
                             categories = apt_controller.get_section_details()
-                            category_cache.set_categories('apt', categories)
+                            self.cache_manager.set_categories('apt', categories)
                             self.logging_service.info("Category cache updated")
                         
                         # Update packages if needed
@@ -677,7 +737,7 @@ class MainView(QMainWindow):
                             self.progress_signal.emit(f"Caching {total} packages")
                             
                             # Clear existing packages first
-                            package_cache.clear_cache('apt')
+                            self.cache_manager.package_cache.clear_cache('apt')
                             self.logging_service.info("Starting package cache update")
                             
                             # Process packages with progress updates
@@ -698,7 +758,7 @@ class MainView(QMainWindow):
                                     homepage=pkg_data.get('homepage'),
                                     metadata=pkg_data.get('metadata', {})
                                 )
-                                package_cache.model.create(package)
+                                self.cache_manager.package_cache.model.create(package)
                                 
                                 # Update progress every 100 packages
                                 if (i + 1) % 100 == 0 or i == total - 1:
@@ -716,6 +776,9 @@ class MainView(QMainWindow):
             self.cache_worker.progress_signal.connect(self.update_status_message)
             self.cache_worker.count_signal.connect(self.update_progress_count)
             self.cache_worker.start()
+        else:
+            # Cache is still valid
+            self.cache_manager.logger.info("Cache is still valid, no update needed")
     
     def on_cache_update_finished(self):
         """Handle cache update completion"""
@@ -723,6 +786,9 @@ class MainView(QMainWindow):
         self.stop_animated_status()
         self.logging_service.info("Package cache update completed")
         self.statusbar.showMessage("Package data updated", 3000)
+        
+        # Update category counts after cache update
+        self.update_category_counts()
         
         # Execute pending action if any
         if self.pending_action:
@@ -825,8 +891,12 @@ class MainView(QMainWindow):
         tree.clear()
         
         # Get cached categories or fetch fresh data
-        cache = CategoryCache(logger=self.logging_service)
-        section_details = cache.get_categories('apt')
+        if hasattr(self, 'cache_manager'):
+            section_details = self.cache_manager.get_categories('apt')
+        else:
+            from cache.category_cache import CategoryCache
+            cache = CategoryCache(logging_service=self.logging_service)
+            section_details = cache.get_categories('apt')
         
         if section_details is None:
             # Cache miss - fetch fresh data
@@ -939,6 +1009,58 @@ class MainView(QMainWindow):
             return
         
         self._execute_view_categories()
+    
+    def update_category_counts(self):
+        """Update category button texts with package counts from cache"""
+        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+            self.logging_service.debug("No cache manager available for category counts")
+            return
+        
+        self.logging_service.debug("Updating category counts from cache")
+        
+        # Get section mapping for categories
+        mapping = {
+            'games': ['games'],
+            'graphics': ['graphics'],
+            'internet': ['net', 'web', 'mail'],
+            'multimedia': ['sound', 'video'],
+            'office': ['editors', 'text', 'doc'],
+            'development': ['devel', 'libdevel', 'python', 'perl'],
+            'system': ['admin', 'base', 'kernel', 'shells'],
+            'utilities': ['utils', 'misc', 'otherosfs'],
+            'education': ['education', 'science'],
+            'accessibility': ['accessibility']
+        }
+        
+        # Get all packages count for "All Apps"
+        all_packages = self.cache_manager.get_packages('apt') or []
+        self.allAppsBtn.setText(f"All Apps ({len(all_packages)})")
+        
+        # Update each category button
+        category_buttons = {
+            'games': self.gamesBtn,
+            'graphics': self.graphicsBtn,
+            'internet': self.internetBtn,
+            'multimedia': self.multimediaBtn,
+            'office': self.officeBtn,
+            'development': self.developmentBtn,
+            'system': self.systemBtn,
+            'utilities': self.utilitiesBtn,
+            'education': self.educationBtn,
+            'accessibility': self.accessibilityBtn
+        }
+        
+        for category, button in category_buttons.items():
+            sections = mapping.get(category, [])
+            count = 0
+            
+            for section in sections:
+                from models.package_cache_model import PackageCacheModel
+                package_cache_model = PackageCacheModel()
+                section_packages = package_cache_model.get_by_section('apt', section) or []
+                count += len(section_packages)
+            
+            button.setText(f"{category.title()} ({count})")
     
     def _execute_view_categories(self):
         """Execute view categories (used directly or after cache update)"""

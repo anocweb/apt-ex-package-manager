@@ -2,8 +2,8 @@ from models.package_model import Package
 from typing import List, Set
 
 class APTController:
-    def __init__(self, logger=None):
-        self.logger = logger
+    def __init__(self, logging_service=None):
+        self.logger = logging_service.get_logger('apt') if logging_service else None
     
     def log(self, message):
         """Log message if logger is available"""
@@ -11,21 +11,21 @@ class APTController:
             self.logger.info(message)
 
     def install_package(self, package_name):
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"APT install function called for {package_name}")
         self.log(f"Installing package: {package_name}")
         # Placeholder for APT install
         return True
 
     def remove_package(self, package_name):
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"APT remove function called for {package_name}")
         self.log(f"Removing package: {package_name}")
         # Placeholder for APT remove
         return True
 
     def search_packages(self, query):
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug(f"APT search function called with query: {query}")
         # Mock search results
         return [
@@ -34,7 +34,7 @@ class APTController:
         ]
 
     def get_installed_packages(self):
-        if hasattr(self, 'logger') and self.logger:
+        if self.logger:
             self.logger.debug("Getting installed packages from APT")
         # Mock installed packages
         return [
@@ -150,8 +150,6 @@ class APTController:
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error loading APT sections: {e}")
-            else:
-                self.log(f"Error loading APT sections: {e}")
             return {}
     
     def get_all_packages_for_cache(self) -> List:
@@ -201,6 +199,4 @@ class APTController:
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error loading APT packages: {e}")
-            else:
-                self.log(f"Error loading APT packages: {e}")
             return []

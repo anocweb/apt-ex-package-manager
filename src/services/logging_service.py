@@ -22,6 +22,9 @@ class LoggingService(QObject):
         # Store formatted log messages for log view
         self._log_messages = []
         
+        # Track registered loggers
+        self.registered_loggers = set()
+        
         # Prevent duplicate handlers
         if not self.logger.handlers:
             self._setup_default_handlers()
@@ -69,6 +72,26 @@ class LoggingService(QObject):
             if isinstance(handler, logging.FileHandler):
                 self.logger.removeHandler(handler)
     
+    def get_logger(self, name: str):
+        """Get a named logger that uses the same handlers"""
+        full_name = f"{self.app_name}.{name}"
+        named_logger = logging.getLogger(full_name)
+        named_logger.setLevel(logging.DEBUG)
+        
+        # Prevent propagation to avoid duplicate messages
+        named_logger.propagate = False
+        
+        # Register this logger
+        self.registered_loggers.add(full_name)
+        self.debug(f"Registered logger: {full_name}")
+        
+        # Add the same handlers if not already added
+        if not named_logger.handlers:
+            for handler in self.logger.handlers:
+                named_logger.addHandler(handler)
+        
+        return named_logger
+    
     def debug(self, message: str):
         """Log debug message"""
         self.logger.debug(message)
@@ -96,8 +119,8 @@ class AppLogHandler(logging.Handler):
         super().__init__()
         self.callback = callback
         self.logging_service = logging_service
-        # Set formatter to include timestamp and level
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+        # Set formatter to include timestamp, logger name, level, and message
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
         self.setFormatter(formatter)
     
     def emit(self, record):
