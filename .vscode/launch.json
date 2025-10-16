@@ -14,6 +14,15 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/main.py",
+            "args": ["--dev-logging", "--stdout-log-level=ERROR"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Apt-Ex Package Manager (Show Logger & console logs)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/main.py",
             "args": ["--dev-logging", "--stdout-log-level=DEBUG"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"

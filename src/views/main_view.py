@@ -5,7 +5,7 @@ from PyQt6 import uic
 from models.package_model import Package
 from settings.app_settings import AppSettings
 from services.logging_service import LoggingService
-from utils.window_state_manager import WindowStateManager
+
 import os
 
 class MainView(QMainWindow):
@@ -79,9 +79,7 @@ class MainView(QMainWindow):
         self.load_panels()
         self.logger.debug("Starting UI setup")
         self.setup_ui()
-        self.logger.debug("Setting up window state manager")
-        self.window_state_manager = WindowStateManager(self, "main_window")
-        self.window_state_manager.restore_geometry()
+
 
     def setup_ui(self):
         self.logger.debug("Setting up UI components")
@@ -402,7 +400,8 @@ class MainView(QMainWindow):
             'development': ['devel', 'libdevel', 'python', 'perl'],
             'system': ['admin', 'base', 'kernel', 'shells'],
             'utilities': ['utils', 'misc', 'otherosfs'],
-            'education': ['education', 'science'],
+            'education': ['education'],
+            'science': ['science', 'math'],
             'accessibility': ['accessibility'],
             'all': []
         }
@@ -1031,29 +1030,31 @@ class MainView(QMainWindow):
             'development': ['devel', 'libdevel', 'python', 'perl'],
             'system': ['admin', 'base', 'kernel', 'shells'],
             'utilities': ['utils', 'misc', 'otherosfs'],
-            'education': ['education', 'science'],
+            'education': ['education'],
+            'science': ['science', 'math'],
             'accessibility': ['accessibility']
         }
         
         # Get all packages count for "All Apps"
         all_packages = self.cache_manager.get_packages('apt') or []
-        self.allAppsBtn.setText(f"All Apps ({len(all_packages)})")
+        self.allAppsBtn.setText(f"📱 All Applications ({len(all_packages)})")
         
-        # Update each category button
+        # Update each category button with icons preserved
         category_buttons = {
-            'games': self.gamesBtn,
-            'graphics': self.graphicsBtn,
-            'internet': self.internetBtn,
-            'multimedia': self.multimediaBtn,
-            'office': self.officeBtn,
-            'development': self.developmentBtn,
-            'system': self.systemBtn,
-            'utilities': self.utilitiesBtn,
-            'education': self.educationBtn,
-            'accessibility': self.accessibilityBtn
+            'games': (self.gamesBtn, '🎮 Games'),
+            'graphics': (self.graphicsBtn, '🎨 Graphics'),
+            'internet': (self.internetBtn, '🌐 Internet'),
+            'multimedia': (self.multimediaBtn, '🎵 Multimedia'),
+            'office': (self.officeBtn, '📄 Office'),
+            'development': (self.developmentBtn, '🔧 Development'),
+            'system': (self.systemBtn, '⚙️ System'),
+            'utilities': (self.utilitiesBtn, '🔨 Utilities'),
+            'education': (self.educationBtn, '🎓 Education'),
+            'science': (self.scienceBtn, '🧪 Science & Math'),
+            'accessibility': (self.accessibilityBtn, '♿ Accessibility')
         }
         
-        for category, button in category_buttons.items():
+        for category, (button, icon_text) in category_buttons.items():
             sections = mapping.get(category, [])
             count = 0
             
@@ -1063,7 +1064,7 @@ class MainView(QMainWindow):
                 section_packages = package_cache_model.get_by_section('apt', section) or []
                 count += len(section_packages)
             
-            button.setText(f"{category.title()} ({count})")
+            button.setText(f"{icon_text} ({count})")
     
     def _execute_view_categories(self):
         """Execute view categories (used directly or after cache update)"""

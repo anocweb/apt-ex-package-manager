@@ -52,12 +52,15 @@
 - **Widget Access**: Direct access to UI elements by name (e.g., `self.install_button`)
 - **Backend Indicators**: Visual badges showing package source (APT/Flatpak/AppImage)
 - **Context Actions**: Use header action area for page-specific buttons
+- **Custom Widget Styling**: Set `Qt.WidgetAttribute.WA_StyledBackground` for stylesheet backgrounds
 
 ### Event Handling
 - **Button Clicks**: Connect to controller methods via view wrapper methods
 - **Input Retrieval**: Get text from inputs using `.text()` method
 - **UI Updates**: Call `update_ui()` after state-changing operations
 - **List Updates**: Clear and repopulate list widgets for data refresh
+- **Selection Events**: Both left-click and right-click should set selection state
+- **Context Menus**: Right-click shows context menu after setting selection
 
 ### Data Flow Patterns (Multi-Backend)
 - **View → Cache**: Views check cache first for fast data access
@@ -107,6 +110,15 @@ def __str__(self):
     return f"{self.name} - {self.version}: {self.description}"
 ```
 
+### Custom Widget with Stylesheet Support
+```python
+class ExpandableItem(QWidget):
+    def __init__(self, ...):
+        super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # Enable stylesheet backgrounds for custom widgets
+```
+
 ## Architectural Guidelines
 
 ### Package Manager Design
@@ -136,6 +148,8 @@ def __str__(self):
 - **State Synchronization**: Update UI after controller operations
 - **Widget Management**: Direct manipulation of Qt6 widgets
 - **Context Actions**: Each page defines relevant header actions using `add_context_action()`
+- **Custom Widgets**: Use `WA_StyledBackground` attribute for stylesheet support
+- **Expandable Items**: Single-selection mode with context menus and background styling
 
 ## Development Standards
 
@@ -158,6 +172,7 @@ def __str__(self):
 - **Transaction Rollback**: Ensure data consistency on failures
 - **Placeholder Methods**: Use `pass` for unimplemented methods
 - **Comment Stubs**: Mark incomplete implementations with descriptive comments
+- **Recursion Prevention**: Use flags to prevent infinite loops in UI updates
 
 ### Testing Considerations
 - **Method Isolation**: Design methods for easy unit testing

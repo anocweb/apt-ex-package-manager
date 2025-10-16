@@ -49,7 +49,6 @@ def main():
     
     # Auto-open log window if --dev-logging is specified
     if args.dev_logging:
-        
         from views.log_view import LogView
         main_view.log_window = LogView(main_view.logging_service)
         # Position and show log window first

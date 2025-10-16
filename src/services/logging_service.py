@@ -26,6 +26,8 @@ class LoggingService(QObject):
         
         # Track registered loggers
         self.registered_loggers = set()
+        # Register root logger
+        self.registered_loggers.add(app_name)
         
         # Prevent duplicate handlers
         if not self.logger.handlers:
@@ -92,10 +94,38 @@ class LoggingService(QObject):
         # Add the same handlers if not already added
         if not named_logger.handlers:
             for handler in self.logger.handlers:
-                named_logger.addHandler(handler)
+                # Create a copy of the handler to avoid shared state issues
+                if isinstance(handler, logging.StreamHandler) and not isinstance(handler, AppLogHandler):
+                    # Console handler - respect stdout_log_level
+                    console_handler = logging.StreamHandler()
+                    console_level = getattr(logging, self.stdout_log_level.upper(), logging.WARNING)
+                    console_handler.setLevel(console_level)
+                    console_handler.setFormatter(handler.formatter)
+                    named_logger.addHandler(console_handler)
+                else:
+                    # Other handlers (app log handler, file handler)
+                    named_logger.addHandler(handler)
         
-        # Return a wrapper that supports data parameter
         return LoggerWrapper(named_logger)
+        
+
+    
+    def register_logger(self, logger):
+        """Register an existing logger with the logging service"""
+        if hasattr(logger, 'logger'):
+            # It's a LoggerWrapper
+            logger_name = logger.logger.name
+        else:
+            # It's a standard logger
+            logger_name = logger.name
+        
+        self.registered_loggers.add(logger_name)
+        
+        # Add handlers to the logger if it doesn't have them
+        actual_logger = logger.logger if hasattr(logger, 'logger') else logger
+        if not actual_logger.handlers:
+            for handler in self.logger.handlers:
+                actual_logger.addHandler(handler)
     
     def debug(self, message: str, data=None):
         """Log debug message with optional data"""

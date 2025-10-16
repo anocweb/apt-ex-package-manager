@@ -5,7 +5,7 @@ import difflib
 from typing import List
 import logging
 from settings.app_settings import AppSettings
-from utils.window_state_manager import WindowStateManager
+
 from widgets.expandable_item import ExpandableItem
 
 class LogView(QMainWindow):
@@ -20,8 +20,9 @@ class LogView(QMainWindow):
         self.search_timer = QTimer()  # Delay timer for search
         self.search_timer.setSingleShot(True)
         self.search_timer.timeout.connect(self.perform_search)
+        self._populating_logs = False  # Recursion guard
         self.setWindowTitle("Application Logs")
-        self.resize(700, 500)
+        #self.resize(700, 500)
         self.setMinimumSize(700, 500)
         
         central_widget = QWidget()
@@ -98,6 +99,7 @@ class LogView(QMainWindow):
         
         # Store expandable items for selection
         self.expandable_items = []
+        self.selected_items = []
         
         # Button layout
         button_layout = QHBoxLayout()
@@ -125,98 +127,130 @@ class LogView(QMainWindow):
         # Populate logs
         self.populate_logs()
         
-        # Setup window state manager
-        self.window_state_manager = WindowStateManager(self, "log_view")
-        self.window_state_manager.restore_geometry()
+
+        
+
     
 
     
     def populate_logs(self):
         """Populate log view with colored entries"""
-        # Clear existing items
-        for item in self.expandable_items:
-            item.setParent(None)
-        self.expandable_items.clear()
+        # Recursion guard - prevent infinite loop
+        if self._populating_logs:
+            return
         
-        # Theme-aware color mapping for log levels
-        palette = self.palette()
-        is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
-        
-        if is_dark:
-            # Dark theme colors
-            colors = {
-                'DEBUG': QColor(150, 150, 150),    # Light Gray
-                'INFO': QColor(220, 220, 220),     # Light Gray
-                'WARNING': QColor(255, 165, 0),    # Orange
-                'ERROR': QColor(255, 100, 100),    # Light Red
-                'CRITICAL': QColor(255, 50, 50)    # Bright Red
-            }
-        else:
-            # Light theme colors
-            colors = {
-                'DEBUG': QColor(100, 100, 100),    # Dark Gray
-                'INFO': QColor(0, 0, 0),           # Black
-                'WARNING': QColor(200, 100, 0),    # Dark Orange
-                'ERROR': QColor(200, 0, 0),        # Dark Red
-                'CRITICAL': QColor(139, 0, 0)      # Very Dark Red
-            }
-        
-        # Get messages from logging service callback
-        if hasattr(self.logging_service, '_log_messages'):
-            log_entries = self.logging_service._log_messages
-        else:
-            # Fallback to basic messages
-            log_entries = []
-        
-        # Extract messages for logger menu
-        messages = []
-        for entry in log_entries:
-            if isinstance(entry, dict):
-                messages.append(entry['message'])
+        self._populating_logs = True
+        try:
+            # Clear existing items
+            for item in self.expandable_items:
+                item.setParent(None)
+            self.expandable_items.clear()
+            
+            # Theme-aware color mapping for log levels
+            palette = self.palette()
+            is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
+            
+            if is_dark:
+                # Dark theme colors
+                colors = {
+                    'DEBUG': QColor(150, 150, 150),    # Light Gray
+                    'INFO': QColor(220, 220, 220),     # Light Gray
+                    'WARNING': QColor(255, 165, 0),    # Orange
+                    'ERROR': QColor(255, 100, 100),    # Light Red
+                    'CRITICAL': QColor(255, 50, 50)    # Bright Red
+                }
             else:
-                messages.append(entry)  # Backward compatibility
-        
-        # Update logger filter menu
-        self.update_logger_menu(messages)
-        
-        # Reverse entries to show newest first
-        for entry in reversed(log_entries):
-            # Handle both old string format and new dict format
-            if isinstance(entry, dict):
-                message = entry['message']
-                data = entry.get('data')
+                # Light theme colors
+                colors = {
+                    'DEBUG': QColor(100, 100, 100),    # Dark Gray
+                    'INFO': QColor(0, 0, 0),           # Black
+                    'WARNING': QColor(200, 100, 0),    # Dark Orange
+                    'ERROR': QColor(200, 0, 0),        # Dark Red
+                    'CRITICAL': QColor(139, 0, 0)      # Very Dark Red
+                }
+            
+            # Get messages from logging service callback
+            if hasattr(self.logging_service, '_log_messages'):
+                log_entries = self.logging_service._log_messages
             else:
-                message = entry
-                data = None
+                # Fallback to basic messages
+                log_entries = []
             
-            # Extract log level from message
-            level = 'INFO'  # Default
-            for lvl in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
-                if lvl in message:
-                    level = lvl
-                    break
+            # Extract messages for logger menu
+            messages = []
+            for entry in log_entries:
+                if isinstance(entry, dict):
+                    messages.append(entry['message'])
+                else:
+                    messages.append(entry)  # Backward compatibility
             
-            # Extract logger name from message
-            logger_name = 'root'
-            parts = message.split(' - ')
-            if len(parts) >= 3:
-                logger_name = parts[1]
+            # Update logger filter menu
+            self.update_logger_menu(messages)
             
-            # Skip message if level or logger is not visible
-            if level not in self.visible_levels or (self.visible_loggers and logger_name not in self.visible_loggers):
-                continue
+            # Reverse entries to show newest first
+            for entry in reversed(log_entries):
+                # Handle both old string format and new dict format
+                if isinstance(entry, dict):
+                    message = entry['message']
+                    data = entry.get('data')
+                else:
+                    message = entry
+                    data = None
+                
+                # Extract log level from message
+                level = 'INFO'  # Default
+                for lvl in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
+                    if lvl in message:
+                        level = lvl
+                        break
+                
+                # Extract logger name from message
+                logger_name = 'root'
+                parts = message.split(' - ')
+                if len(parts) >= 3:
+                    logger_name = parts[1]
+                
+                # Skip message if level or logger is not visible
+                if level not in self.visible_levels or (self.visible_loggers and logger_name not in self.visible_loggers):
+                    continue
+                
+                # Skip message if it doesn't match search filter
+                if self.search_text and not self.fuzzy_match(message, self.search_text):
+                    continue
+                
+                # Create expandable item
+                item = ExpandableItem(message, data, colors.get(level, colors['INFO']), self.logging_service)
+                item.selection_changed.connect(self.on_item_selected)
+                self.log_layout.addWidget(item)
+                self.expandable_items.append(item)
             
-            # Skip message if it doesn't match search filter
-            if self.search_text and not self.fuzzy_match(message, self.search_text):
-                continue
+            # Add stretch to push items to top
+            self.log_layout.addStretch()
             
-            # Create expandable item
-            item = ExpandableItem(message, data, colors.get(level, colors['INFO']))
-            self.log_layout.addWidget(item)
-            self.expandable_items.append(item)
-        
-        # Add stretch to push items to top
-        self.log_layout.addStretch()
+
+            
+        finally:
+            self._populating_logs = False
+    
+    def on_item_selected(self, selected_item):
+        """Handle item selection with multi-select support"""
+        # Check if Ctrl was held (multi-select mode)
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers & Qt.KeyboardModifier.ControlModifier:
+            # Multi-select: toggle selection
+            if selected_item in self.selected_items:
+                selected_item.set_selected(False)
+                self.selected_items.remove(selected_item)
+            else:
+                selected_item.set_selected(True)
+                self.selected_items.append(selected_item)
+        else:
+            # Single-select: clear others and select this one
+            for item in self.selected_items:
+                item.set_selected(False)
+            self.selected_items.clear()
+            selected_item.set_selected(True)
+            self.selected_items.append(selected_item)
     
     def copy_logs(self):
         """Copy all visible log messages to clipboard"""
@@ -296,6 +330,11 @@ class LogView(QMainWindow):
         all_loggers = self.logging_service.registered_loggers.copy()
         inactive_loggers = all_loggers - active_loggers
         
+        # Store current check states before clearing
+        current_states = {}
+        for logger_name, action in self.logger_actions.items():
+            current_states[logger_name] = action.isChecked()
+        
         # Clear and rebuild menu
         self.logger_menu.clear()
         self.logger_actions.clear()
@@ -304,7 +343,8 @@ class LogView(QMainWindow):
         for logger_name in sorted(active_loggers):
             action = QAction(logger_name, self)
             action.setCheckable(True)
-            action.setChecked(True)
+            # Preserve previous state or default to True for new loggers
+            action.setChecked(current_states.get(logger_name, True))
             action.triggered.connect(self.update_logger_filter)
             self.logger_actions[logger_name] = action
             self.logger_menu.addAction(action)
@@ -317,7 +357,8 @@ class LogView(QMainWindow):
         for logger_name in sorted(inactive_loggers):
             action = QAction(f"{logger_name} (no logs)", self)
             action.setCheckable(True)
-            action.setChecked(True)
+            # Preserve previous state or default to True for new loggers
+            action.setChecked(current_states.get(logger_name, True))
             action.triggered.connect(self.update_logger_filter)
             self.logger_actions[logger_name] = action
             self.logger_menu.addAction(action)
@@ -419,6 +460,8 @@ class LogView(QMainWindow):
         settings.set("log_view/exact_match", self.match_toggle_action.isChecked())
         
         self.on_search_text_changed()  # Refresh search
+    
+
     
 
     
