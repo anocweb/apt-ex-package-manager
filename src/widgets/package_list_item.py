@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame
+from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6 import uic
 from services.odrs_service import ODRSService
 
 class PackageListItem(QFrame):
@@ -11,11 +12,11 @@ class PackageListItem(QFrame):
         super().__init__(parent)
         self.package = package
         self.odrs_service = odrs_service or ODRSService()
+        uic.loadUi('src/ui/package_list_item.ui', self)
         self.setup_ui()
     
     def setup_ui(self):
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)  # Enable stylesheet backgrounds
-        self.setFrameStyle(QFrame.Shape.Box)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
         # Check if dev outline is active
         from PyQt6.QtWidgets import QApplication
@@ -29,6 +30,7 @@ class PackageListItem(QFrame):
                     border: 1px solid red;
                     border-radius: 8px;
                     padding: 8px;
+                    margin: 4px;
                 }
                 QFrame:hover {
                     background-color: palette(alternate-base);
@@ -41,102 +43,35 @@ class PackageListItem(QFrame):
                     border: 1px solid palette(mid);
                     border-radius: 8px;
                     padding: 8px;
+                    margin: 4px;
                 }
                 QFrame:hover {
                     background-color: palette(alternate-base);
                 }
             """)
-        from PyQt6.QtWidgets import QSizePolicy
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
         
-        # Main horizontal layout
-        main_layout = QHBoxLayout(self)
-        main_layout.setSpacing(12)
+        # Set package data
+        name = getattr(self.package, 'name', 'Unknown Package')
+        self.nameLabel.setText(name)
         
-        # Icon placeholder
-        icon_label = QLabel("📦")
-        icon_label.setFixedSize(48, 48)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if dev_outline:
-            icon_label.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px; border: 1px solid red;")
-        else:
-            icon_label.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px;")
-        main_layout.addWidget(icon_label)
+        description = getattr(self.package, 'description', 'No description available')
+        self.descLabel.setText(description)
         
-        # Content area
-        content_layout = QVBoxLayout()
-        content_layout.setSpacing(2)
-        
-        # Package name
-        name = getattr(self.package, 'name', '') or getattr(self.package, 'package_id', 'Unknown Package')
-        name_label = QLabel(name)
-        if dev_outline:
-            name_label.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
-        else:
-            name_label.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: none; padding: 0px;")
-        name_label.setMinimumHeight(20)
-        name_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        content_layout.addWidget(name_label)
-        
-        # Package description
-        description = getattr(self.package, 'description', '') or getattr(self.package, 'summary', '') or 'No description available'
-        desc_label = QLabel(description)
-        
-        # Calculate font metrics for 2 lines
-        font_metrics = desc_label.fontMetrics()
-        line_height = font_metrics.height()
-        two_line_height = line_height * 2
-        
-        # Elide text if it exceeds 2 lines
-        available_width = 200  # Approximate available width
-        elided_text = font_metrics.elidedText(description, Qt.TextElideMode.ElideRight, available_width * 2)
-        desc_label.setText(elided_text)
-        if dev_outline:
-            desc_label.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
-        else:
-            desc_label.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: none; padding: 0px;")
-        desc_label.setWordWrap(True)
-        desc_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-        desc_label.setMaximumHeight(36)
-        desc_label.setMinimumHeight(36)
-        desc_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        content_layout.addWidget(desc_label)
-        
-        # Rating from ODRS - start with collecting state to avoid blocking
-        rating_label = QLabel('<span style="color: palette(window-text);">Collecting rating...</span>')
-        if dev_outline:
-            rating_label.setStyleSheet("font-size: 11px; background: transparent; border: 1px solid red; padding: 0px;")
-        else:
-            rating_label.setStyleSheet("font-size: 11px; background: transparent; border: none; padding: 0px;")
-        rating_label.setMinimumHeight(18)
-        rating_label.setTextFormat(Qt.TextFormat.RichText)
-        rating_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        content_layout.addWidget(rating_label)
-        
-        main_layout.addLayout(content_layout)
-        
-        # Right side layout for backend label and install button
-        right_layout = QVBoxLayout()
-        
-        # Backend label
         backend = getattr(self.package, 'backend', 'apt')
-        backend_label = QLabel(backend.upper())
-        if dev_outline:
-            backend_label.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 2px;")
-        else:
-            backend_label.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: none; padding: 2px;")
-        backend_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        backend_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        right_layout.addWidget(backend_label)
+        self.backendLabel.setText(backend.upper())
         
-        # Add stretch to push install button to bottom
-        right_layout.addStretch()
+        # Connect install button
+        package_name = getattr(self.package, 'name', '')
+        self.installButton.clicked.connect(lambda: self.install_requested.emit(package_name))
         
-        # Install button
-        install_btn = QPushButton("⬇ Install")
-        install_btn.setFixedSize(80, 32)
+        # Apply styling
         if dev_outline:
-            install_btn.setStyleSheet("""
+            self.iconLabel.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px; border: 1px solid red;")
+            self.nameLabel.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
+            self.descLabel.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
+            self.ratingLabel.setStyleSheet("font-size: 11px; background: transparent; border: 1px solid red; padding: 0px;")
+            self.backendLabel.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 2px;")
+            self.installButton.setStyleSheet("""
                 QPushButton {
                     background-color: palette(highlight);
                     color: palette(highlighted-text);
@@ -149,7 +84,12 @@ class PackageListItem(QFrame):
                 }
             """)
         else:
-            install_btn.setStyleSheet("""
+            self.iconLabel.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px;")
+            self.nameLabel.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: none; padding: 0px;")
+            self.descLabel.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: none; padding: 0px;")
+            self.ratingLabel.setStyleSheet("font-size: 11px; background: transparent; border: none; padding: 0px;")
+            self.backendLabel.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: none; padding: 2px;")
+            self.installButton.setStyleSheet("""
                 QPushButton {
                     background-color: palette(highlight);
                     color: palette(highlighted-text);
@@ -161,17 +101,14 @@ class PackageListItem(QFrame):
                     background-color: palette(dark);
                 }
             """)
-        package_name = getattr(self.package, 'name', '') or getattr(self.package, 'package_id', '')
-        install_btn.clicked.connect(lambda: self.install_requested.emit(package_name))
-        right_layout.addWidget(install_btn)
         
-        main_layout.addLayout(right_layout)
+        # Set transparent for mouse events
+        self.nameLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.descLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.ratingLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.backendLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         
-        # Store rating label reference for updates
-        self.rating_label = rating_label
-        
-        # Update rating display after widget creation (non-blocking)
-        # Skip rating updates when dev logging is active to prevent lockups
+        # Update rating display
         if not dev_outline:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, self.update_rating_display)
@@ -179,7 +116,7 @@ class PackageListItem(QFrame):
     def update_rating_display(self):
         """Update rating display with fresh data"""
         rating_text = self._get_rating_text()
-        self.rating_label.setText(rating_text)
+        self.ratingLabel.setText(rating_text)
     
     def _get_rating_text(self) -> str:
         """Get formatted rating text from ODRS"""
@@ -200,15 +137,31 @@ class PackageListItem(QFrame):
             return '<span style="color: palette(window-text);">Collecting rating...</span>'
         
         try:
-            package_name = getattr(self.package, 'name', '') or getattr(self.package, 'package_id', '')
+            # Check if rating is already included in package summary
+            if hasattr(self.package, 'rating') and self.package.rating is not None:
+                rating_val = self.package.rating
+                review_count = getattr(self.package, 'review_count', 0)
+                
+                if review_count > 0:
+                    filled_stars = int(rating_val)
+                    empty_stars = 5 - filled_stars
+                    stars_html = (
+                        f'<span style="color: #FFD700;">{"★" * filled_stars}</span>' +
+                        f'<span style="color: #B8860B;">{"☆" * empty_stars}</span>'
+                    )
+                    return f'{stars_html}<span style="color: palette(window-text);"> {rating_val} ({review_count} reviews)</span>'
+                else:
+                    empty_stars = '☆' * 5
+                    return f'<span style="color: #B8860B;">{empty_stars}</span><span style="color: palette(mid);"> No Ratings Available</span>'
+            
+            # Fallback to ODRS service lookup
+            package_name = getattr(self.package, 'name', '')
             app_id = self.odrs_service.map_package_to_app_id(package_name)
             rating = self.odrs_service._get_cached_rating(app_id)
             
             if rating is None:
-                # State 2: No cached rating
                 return '<span style="color: palette(window-text);">Collecting rating...</span>'
             elif rating.review_count > 0:
-                # State 3: Has rating data
                 filled_stars = int(rating.rating)
                 empty_stars = 5 - filled_stars
                 stars_html = (
@@ -217,7 +170,6 @@ class PackageListItem(QFrame):
                 )
                 return f'{stars_html}<span style="color: palette(window-text);"> {rating.rating} ({rating.review_count} reviews)</span>'
             else:
-                # State 4: No rating available (cached as 0)
                 empty_stars = '☆' * 5
                 return f'<span style="color: #B8860B;">{empty_stars}</span><span style="color: palette(mid);"> No Ratings Available</span>'
         except Exception:

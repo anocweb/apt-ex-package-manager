@@ -3,8 +3,10 @@ from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QIcon, QTextCursor
 from PyQt6 import uic
 from models.package_model import Package
+from models.package_cache_model import PackageSummary
 from settings.app_settings import AppSettings
 from services.logging_service import LoggingService
+from widgets.virtual_category_container import VirtualCategoryContainer
 
 import os
 
@@ -96,11 +98,14 @@ class MainView(QMainWindow):
         self.package_layout = QGridLayout(home_panel.package_container)
         self.content_layouts['installed'] = QGridLayout(installed_panel.installedContainer)
         
-        # Use existing layout or create new one for category container
-        if category_panel.categoryContainer.layout():
-            self.content_layouts['category'] = category_panel.categoryContainer.layout()
-        else:
-            self.content_layouts['category'] = QGridLayout(category_panel.categoryContainer)
+        # Replace category scroll area with virtual scrolling container
+        self.virtual_category_container = VirtualCategoryContainer()
+        category_panel.categoryLayout.replaceWidget(category_panel.categoryScrollArea, self.virtual_category_container)
+        category_panel.categoryScrollArea.setParent(None)
+        
+        # Connect install signal
+        self.virtual_category_container.install_requested.connect(self.install_package)
+        self.virtual_category_container.install_requested = self.install_package
         
         # Connect search functionality from home panel
         home_panel.search_input.textChanged.connect(self.search_packages)
@@ -332,7 +337,7 @@ class MainView(QMainWindow):
         self._execute_category_selection(category)
     
     def _execute_category_selection(self, category):
-        """Execute category selection (cache-only with lazy loading)"""
+        """Execute category selection using virtual scrolling"""
         self.logging_service.info(f"Selected category: {category}")
         # Update button selection
         self.update_button_selection(category)
@@ -343,19 +348,14 @@ class MainView(QMainWindow):
         # Update page title for category
         self.pageTitle.setText(f"{category.title()} Packages")
         
-        # Store category for lazy loading
+        # Store category for loading
         self.current_category = category
-        self.current_packages = []
-        self.loaded_count = 0
-        self.batch_size = 20
         
         # Clear display and reset scroll position
         self.clear_category_display()
         
         # Reset scroll position to top
-        category_panel = self.panels['category']
-        scroll_area = category_panel.categoryScrollArea
-        scroll_area.verticalScrollBar().setValue(0)
+        self.virtual_category_container.verticalScrollBar().setValue(0)
         
         self.load_next_batch()
         self.statusbar.showMessage(f"Loading {category} packages", 2000)
@@ -393,17 +393,10 @@ class MainView(QMainWindow):
     
     def clear_category_display(self):
         """Clear category display"""
-        category_panel = self.panels['category']
-        layout = category_panel.packageListLayout
-        
-        # Clear existing items
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        self.virtual_category_container.set_packages([])
     
     def load_next_batch(self):
-        """Load next batch of packages for current category (cache-only)"""
+        """Load packages for current category using virtual scrolling"""
         if not hasattr(self, 'current_category'):
             return
         
@@ -430,86 +423,25 @@ class MainView(QMainWindow):
             self.statusbar.showMessage("No cached data available", 3000)
             return
         
-        if self.current_category == 'all':
-            cached_packages = self.cache_manager.get_packages('apt') or []
-        else:
-            # Get all packages at once and filter by sections
-            all_packages = self.cache_manager.package_cache.model.get_by_backend('apt') or []
-            cached_packages = [pkg for pkg in all_packages if pkg.section in sections]
+        # Get lightweight summaries instead of full package objects
+        include_rating = self.app_settings.get_odrs_enabled()
+        cached_packages = self.cache_manager.package_cache.model.get_summary_by_sections(
+            'apt', sections if self.current_category != 'all' else [], include_rating
+        )
         
-        # Get next batch
-        start_idx = self.loaded_count
-        end_idx = start_idx + self.batch_size
-        batch = cached_packages[start_idx:end_idx]
+        # Set ODRS service for virtual container
+        if hasattr(self, 'odrs_service'):
+            self.virtual_category_container.odrs_service = self.odrs_service
         
-        if batch:
-            category_panel = self.panels['category']
-            layout = category_panel.packageListLayout
-            
-            # Store package items for rating updates
-            batch_items = []
-            for package in batch:
-                package_item = self.create_package_list_item(package)
-                layout.addWidget(package_item)
-                batch_items.append((package, package_item))
-            
-            self.loaded_count += len(batch)
-            
-            # Skip ODRS rating fetch when dev logging is active to prevent lockups
-            dev_logging = hasattr(self, 'logging_service') and self.logging_service.app_log_handler.level <= 10  # DEBUG level
-            if not dev_logging and self.app_settings.get_odrs_enabled() and hasattr(self, 'odrs_service') and self.odrs_service:
-                def update_ratings(ratings):
-                    for package, item in batch_items:
-                        item.update_rating_display()
-                
-                app_ids = [self.odrs_service.map_package_to_app_id(getattr(pkg, 'name', '') or getattr(pkg, 'package_id', '')) for pkg in batch]
-                self.odrs_service.get_ratings_async(app_ids, update_ratings)
-            
-            # Setup scroll-based loading if more packages available
-            if end_idx < len(cached_packages):
-                self.setup_scroll_loading(cached_packages)
+        # Load all packages into virtual container
+        self.virtual_category_container.set_packages(cached_packages)
+        
+        if cached_packages:
+            self.statusbar.showMessage(f"Loaded {len(cached_packages)} packages", 2000)
         else:
             self.statusbar.showMessage("No packages found in cache", 3000)
     
-    def setup_scroll_loading(self, all_packages):
-        """Setup scroll-based lazy loading"""
-        category_panel = self.panels['category']
-        scroll_area = category_panel.categoryScrollArea
-        
-        # Store packages for loading
-        self.all_category_packages = all_packages
-        
-        # Connect scroll event
-        scroll_area.verticalScrollBar().valueChanged.connect(self.on_scroll_changed)
-    
-    def on_scroll_changed(self, value):
-        """Load more packages when near bottom of scroll"""
-        if not hasattr(self, 'all_category_packages'):
-            return
-        
-        category_panel = self.panels['category']
-        scroll_bar = category_panel.categoryScrollArea.verticalScrollBar()
-        
-        # Load more when within 100 pixels of bottom
-        if value >= scroll_bar.maximum() - 100:
-            if self.loaded_count < len(self.all_category_packages):
-                self.load_more_packages()
-    
-    def load_more_packages(self):
-        """Load next batch of packages"""
-        start_idx = self.loaded_count
-        end_idx = start_idx + self.batch_size
-        batch = self.all_category_packages[start_idx:end_idx]
-        
-        if batch:
-            category_panel = self.panels['category']
-            layout = category_panel.packageListLayout
-            
-            for package in batch:
-                package_item = self.create_package_list_item(package)
-                layout.addWidget(package_item)
-            
-            self.loaded_count += len(batch)
+
     
     def populate_settings_panel(self):
         """Populate settings panel with source data"""

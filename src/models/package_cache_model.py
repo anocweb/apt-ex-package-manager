@@ -3,6 +3,15 @@ from dataclasses import dataclass
 from cache.connection_manager import SQLiteConnectionManager
 
 @dataclass
+class PackageSummary:
+    """Lightweight package summary for category display"""
+    name: str
+    description: str
+    backend: str
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+
+@dataclass
 class PackageCache:
     """Package cache data model"""
     id: Optional[int] = None
@@ -213,6 +222,52 @@ class PackageCacheModel:
                     package.metadata = metadata_by_id.get(package.id, {})
             
             return packages
+    
+    def get_summary_by_sections(self, backend: str, sections: List[str], include_rating: bool = False) -> List[PackageSummary]:
+        """Get lightweight package summaries for category display"""
+        with self.conn_mgr.connection() as conn:
+            if not sections:
+                # All packages
+                base_query = '''
+                    SELECT p.name, COALESCE(p.description, p.summary, '') as description, p.backend
+                    FROM package_cache p
+                    WHERE p.backend = ?
+                    ORDER BY p.name
+                '''
+                params = [backend]
+            else:
+                # Specific sections
+                placeholders = ','.join('?' * len(sections))
+                base_query = f'''
+                    SELECT p.name, COALESCE(p.description, p.summary, '') as description, p.backend
+                    FROM package_cache p
+                    WHERE p.backend = ? AND p.section IN ({placeholders})
+                    ORDER BY p.name
+                '''
+                params = [backend] + sections
+            
+            if include_rating:
+                # Join with ratings
+                query = base_query.replace(
+                    'SELECT p.name, COALESCE(p.description, p.summary, \'\') as description, p.backend',
+                    'SELECT p.name, COALESCE(p.description, p.summary, \'\') as description, p.backend, r.rating, r.review_count'
+                ).replace(
+                    'FROM package_cache p',
+                    'FROM package_cache p LEFT JOIN rating_cache r ON p.name = r.app_id'
+                )
+            else:
+                query = base_query
+            
+            cursor = conn.execute(query, params)
+            
+            summaries = []
+            for row in cursor.fetchall():
+                if include_rating and len(row) == 5:
+                    summaries.append(PackageSummary(row[0], row[1], row[2], row[3], row[4]))
+                else:
+                    summaries.append(PackageSummary(row[0], row[1], row[2]))
+            
+            return summaries
     
     def get_by_section(self, backend: str, section: str) -> List[PackageCache]:
         """Get packages by section/category"""
