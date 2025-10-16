@@ -5,10 +5,11 @@ from PyQt6 import uic
 from models.package_model import Package
 from settings.app_settings import AppSettings
 from services.logging_service import LoggingService
+from utils.window_state_manager import WindowStateManager
 import os
 
 class MainView(QMainWindow):
-    def __init__(self, package_manager, dev_logging=False):
+    def __init__(self, package_manager, dev_logging=False, stdout_log_level='WARNING'):
         super().__init__()
         self.package_manager = package_manager
         self.current_packages = []
@@ -26,7 +27,7 @@ class MainView(QMainWindow):
         self.log_window = None  # Track log window instance
         
         # Initialize logging service
-        self.logging_service = LoggingService()
+        self.logging_service = LoggingService(stdout_log_level=stdout_log_level)
         self.logging_service.set_app_log_callback(self.add_log_message)
         
         # Get named logger for UI operations
@@ -78,8 +79,9 @@ class MainView(QMainWindow):
         self.load_panels()
         self.logger.debug("Starting UI setup")
         self.setup_ui()
-        self.logger.debug("Restoring window state")
-        self.restore_window_state()
+        self.logger.debug("Setting up window state manager")
+        self.window_state_manager = WindowStateManager(self, "main_window")
+        self.window_state_manager.restore_geometry()
 
     def setup_ui(self):
         self.logger.debug("Setting up UI components")
@@ -627,23 +629,12 @@ class MainView(QMainWindow):
                 settings_panel.makeDefaultApt.setText('☆ Make Default')
                 settings_panel.makeDefaultApt.setEnabled(True)
     
-    def restore_window_state(self):
-        """Restore window geometry and state from settings"""
-        geometry = self.app_settings.get_window_geometry()
-        if geometry:
-            self.restoreGeometry(geometry)
-        
-        state = self.app_settings.get_window_state()
-        if state:
-            self.restoreState(state)
+
+    
+
     
     def closeEvent(self, event):
-        """Save window state when closing"""
-        # Save settings before quitting
-        self.app_settings.set_window_geometry(self.saveGeometry())
-        self.app_settings.set_window_state(self.saveState())
-        self.app_settings.settings.sync()  # Force save to disk
-        
+        """Handle application close"""
         event.accept()
         
         # Exit the entire application after accepting the event
@@ -928,6 +919,14 @@ class MainView(QMainWindow):
         from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame
         from PyQt6.QtCore import Qt
         
+        # Debug package attributes
+        self.logger.info(f"Creating package item for: {type(package)}")
+        if hasattr(package, '__dict__'):
+            self.logger.debug("Package details", data=package.__dict__)
+        else:
+            attrs = [attr for attr in dir(package) if not attr.startswith('_')]
+            self.logger.debug("Package attributes", data=attrs)
+        
         # Main container
         item_widget = QFrame()
         item_widget.setFrameStyle(QFrame.Shape.Box)
@@ -961,12 +960,15 @@ class MainView(QMainWindow):
         content_layout.setSpacing(2)
         
         # Package name
-        name_label = QLabel(package.name)
+        name = getattr(package, 'name', '') or getattr(package, 'package_id', 'Unknown Package')
+        self.logger.info(f"Package name: '{name}'")
+        name_label = QLabel(name)
         name_label.setStyleSheet("font-size: 16px; font-weight: bold; color: palette(text);")
         content_layout.addWidget(name_label)
         
         # Package description
-        description = getattr(package, 'description', '') or getattr(package, 'summary', '')
+        description = getattr(package, 'description', '') or getattr(package, 'summary', '') or 'No description available'
+        self.logger.info(f"Package description: '{description[:50]}...'")
         desc_text = description[:80] + "..." if len(description) > 80 else description
         desc_label = QLabel(desc_text)
         desc_label.setStyleSheet("font-size: 12px; color: palette(mid);")
@@ -995,7 +997,8 @@ class MainView(QMainWindow):
                 background-color: #2980b9;
             }
         """)
-        install_btn.clicked.connect(lambda: self.install_package(package.name))
+        package_name = getattr(package, 'name', '') or getattr(package, 'package_id', '')
+        install_btn.clicked.connect(lambda: self.install_package(package_name))
         main_layout.addWidget(install_btn)
         
         return item_widget

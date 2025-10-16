@@ -1,10 +1,12 @@
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QTextEdit, QPushButton, QWidget, QHBoxLayout, QApplication, QComboBox, QLabel, QMenu, QLineEdit
-from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QAction, QIcon
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QScrollArea, QPushButton, QWidget, QHBoxLayout, QApplication, QComboBox, QLabel, QMenu, QLineEdit
+from PyQt6.QtGui import QColor, QAction, QIcon
 from PyQt6.QtCore import Qt, QTimer
 import difflib
 from typing import List
 import logging
 from settings.app_settings import AppSettings
+from utils.window_state_manager import WindowStateManager
+from widgets.expandable_item import ExpandableItem
 
 class LogView(QMainWindow):
     """Independent log view window with colored log levels"""
@@ -83,11 +85,19 @@ class LogView(QMainWindow):
         
         layout.addLayout(controls_layout)
         
-        # Log text area
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        self.log_text.setFont(self.log_text.font())
-        layout.addWidget(self.log_text)
+        # Log scroll area with expandable items
+        self.log_scroll = QScrollArea()
+        self.log_container = QWidget()
+        self.log_layout = QVBoxLayout(self.log_container)
+        self.log_layout.setContentsMargins(0, 0, 0, 0)
+        self.log_layout.setSpacing(1)
+        
+        self.log_scroll.setWidget(self.log_container)
+        self.log_scroll.setWidgetResizable(True)
+        layout.addWidget(self.log_scroll)
+        
+        # Store expandable items for selection
+        self.expandable_items = []
         
         # Button layout
         button_layout = QHBoxLayout()
@@ -110,14 +120,23 @@ class LogView(QMainWindow):
         # Connect to logging service signal for real-time updates
         self.logging_service.log_updated.connect(self.populate_logs)
         
+
+        
         # Populate logs
         self.populate_logs()
+        
+        # Setup window state manager
+        self.window_state_manager = WindowStateManager(self, "log_view")
+        self.window_state_manager.restore_geometry()
     
 
     
     def populate_logs(self):
         """Populate log view with colored entries"""
-        self.log_text.clear()
+        # Clear existing items
+        for item in self.expandable_items:
+            item.setParent(None)
+        self.expandable_items.clear()
         
         # Theme-aware color mapping for log levels
         palette = self.palette()
@@ -144,16 +163,32 @@ class LogView(QMainWindow):
         
         # Get messages from logging service callback
         if hasattr(self.logging_service, '_log_messages'):
-            messages = self.logging_service._log_messages
+            log_entries = self.logging_service._log_messages
         else:
             # Fallback to basic messages
-            messages = []
+            log_entries = []
+        
+        # Extract messages for logger menu
+        messages = []
+        for entry in log_entries:
+            if isinstance(entry, dict):
+                messages.append(entry['message'])
+            else:
+                messages.append(entry)  # Backward compatibility
         
         # Update logger filter menu
         self.update_logger_menu(messages)
         
-        # Reverse messages to show newest first
-        for message in reversed(messages):
+        # Reverse entries to show newest first
+        for entry in reversed(log_entries):
+            # Handle both old string format and new dict format
+            if isinstance(entry, dict):
+                message = entry['message']
+                data = entry.get('data')
+            else:
+                message = entry
+                data = None
+            
             # Extract log level from message
             level = 'INFO'  # Default
             for lvl in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
@@ -175,52 +210,27 @@ class LogView(QMainWindow):
             if self.search_text and not self.fuzzy_match(message, self.search_text):
                 continue
             
-            # Set text color based on level
-            format = QTextCharFormat()
-            format.setForeground(colors.get(level, colors['INFO']))
-            
-            cursor = self.log_text.textCursor()
-            cursor.movePosition(QTextCursor.MoveOperation.End)
-            cursor.insertText(message + "\n", format)
+            # Create expandable item
+            item = ExpandableItem(message, data, colors.get(level, colors['INFO']))
+            self.log_layout.addWidget(item)
+            self.expandable_items.append(item)
         
-        # Scroll to top to show newest entries
-        self.log_text.moveCursor(QTextCursor.MoveOperation.Start)
+        # Add stretch to push items to top
+        self.log_layout.addStretch()
     
     def copy_logs(self):
-        """Copy visible log messages to clipboard"""
+        """Copy all visible log messages to clipboard"""
         visible_logs = self.get_visible_logs()
         clipboard = QApplication.clipboard()
         clipboard.setText("\n".join(visible_logs))
     
+
+    
     def get_visible_logs(self):
         """Get currently visible log messages based on filters"""
-        if not hasattr(self.logging_service, '_log_messages'):
-            return []
-        
         visible_logs = []
-        for message in reversed(self.logging_service._log_messages):
-            # Extract log level from message
-            level = 'INFO'  # Default
-            for lvl in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
-                if lvl in message:
-                    level = lvl
-                    break
-            
-            # Extract logger name from message
-            logger_name = 'root'
-            parts = message.split(' - ')
-            if len(parts) >= 3:
-                logger_name = parts[1]
-            
-            # Skip message if level or logger is not visible
-            if level not in self.visible_levels or (self.visible_loggers and logger_name not in self.visible_loggers):
-                continue
-            
-            # Skip message if it doesn't match search filter
-            if self.search_text and not self.fuzzy_match(message, self.search_text):
-                continue
-            
-            visible_logs.append(message)
+        for item in self.expandable_items:
+            visible_logs.append(item.message)
         
         return visible_logs
     
@@ -409,6 +419,12 @@ class LogView(QMainWindow):
         settings.set("log_view/exact_match", self.match_toggle_action.isChecked())
         
         self.on_search_text_changed()  # Refresh search
+    
+
+    
+
+    
+
     
     def closeEvent(self, event):
         """Disconnect from logging service when window is closed"""

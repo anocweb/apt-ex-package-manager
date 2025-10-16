@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from typing import Callable, Optional
 from PyQt6.QtCore import QObject, pyqtSignal
 
@@ -9,9 +10,10 @@ class LoggingService(QObject):
     # Signal emitted when new log message is added
     log_updated = pyqtSignal()
     
-    def __init__(self, app_name: str = "apt-ex-manager"):
+    def __init__(self, app_name: str = "apt-ex-manager", stdout_log_level: str = "WARNING"):
         super().__init__()
         self.app_name = app_name
+        self.stdout_log_level = stdout_log_level
         self.logger = logging.getLogger(app_name)
         self.logger.setLevel(logging.DEBUG)
         
@@ -32,7 +34,9 @@ class LoggingService(QObject):
     def _setup_default_handlers(self):
         """Setup default console handler"""
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.WARNING)  # Only warnings+ to console
+        # Set console level based on stdout_log_level parameter
+        console_level = getattr(logging, self.stdout_log_level.upper(), logging.WARNING)
+        console_handler.setLevel(console_level)
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
@@ -73,7 +77,7 @@ class LoggingService(QObject):
                 self.logger.removeHandler(handler)
     
     def get_logger(self, name: str):
-        """Get a named logger that uses the same handlers"""
+        """Get a named logger wrapper that supports data parameter"""
         full_name = f"{self.app_name}.{name}"
         named_logger = logging.getLogger(full_name)
         named_logger.setLevel(logging.DEBUG)
@@ -90,27 +94,79 @@ class LoggingService(QObject):
             for handler in self.logger.handlers:
                 named_logger.addHandler(handler)
         
-        return named_logger
+        # Return a wrapper that supports data parameter
+        return LoggerWrapper(named_logger)
     
-    def debug(self, message: str):
-        """Log debug message"""
-        self.logger.debug(message)
+    def debug(self, message: str, data=None):
+        """Log debug message with optional data"""
+        if data is not None:
+            self.logger.debug(message, extra={'data': data})
+        else:
+            self.logger.debug(message)
     
-    def info(self, message: str):
-        """Log info message"""
-        self.logger.info(message)
+    def info(self, message: str, data=None):
+        """Log info message with optional data"""
+        if data is not None:
+            self.logger.info(message, extra={'data': data})
+        else:
+            self.logger.info(message)
     
-    def warning(self, message: str):
-        """Log warning message"""
-        self.logger.warning(message)
+    def warning(self, message: str, data=None):
+        """Log warning message with optional data"""
+        if data is not None:
+            self.logger.warning(message, extra={'data': data})
+        else:
+            self.logger.warning(message)
     
-    def error(self, message: str):
-        """Log error message"""
-        self.logger.error(message)
+    def error(self, message: str, data=None):
+        """Log error message with optional data"""
+        if data is not None:
+            self.logger.error(message, extra={'data': data})
+        else:
+            self.logger.error(message)
     
-    def critical(self, message: str):
-        """Log critical message"""
-        self.logger.critical(message)
+    def critical(self, message: str, data=None):
+        """Log critical message with optional data"""
+        if data is not None:
+            self.logger.critical(message, extra={'data': data})
+        else:
+            self.logger.critical(message)
+
+class LoggerWrapper:
+    """Wrapper for logger that supports data parameter"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+    
+    def debug(self, message: str, data=None):
+        if data is not None:
+            self.logger.debug(message, extra={'data': data})
+        else:
+            self.logger.debug(message)
+    
+    def info(self, message: str, data=None):
+        if data is not None:
+            self.logger.info(message, extra={'data': data})
+        else:
+            self.logger.info(message)
+    
+    def warning(self, message: str, data=None):
+        if data is not None:
+            self.logger.warning(message, extra={'data': data})
+        else:
+            self.logger.warning(message)
+    
+    def error(self, message: str, data=None):
+        if data is not None:
+            self.logger.error(message, extra={'data': data})
+        else:
+            self.logger.error(message)
+    
+    def critical(self, message: str, data=None):
+        if data is not None:
+            self.logger.critical(message, extra={'data': data})
+        else:
+            self.logger.critical(message)
 
 class AppLogHandler(logging.Handler):
     """Custom handler for in-app log display"""
@@ -128,8 +184,22 @@ class AppLogHandler(logging.Handler):
         try:
             message = self.format(record)
             self.callback(message)
-            # Store formatted message for log view
-            self.logging_service._log_messages.append(message)
+            
+            # Handle data field if present
+            data_json = None
+            if hasattr(record, 'data') and record.data is not None:
+                try:
+                    data_json = json.dumps(record.data, indent=2, default=str)
+                except Exception:
+                    data_json = str(record.data)
+            
+            # Store message with optional data for log view
+            log_entry = {
+                'message': message,
+                'data': data_json
+            }
+            self.logging_service._log_messages.append(log_entry)
+            
             # Keep only last 200 messages
             if len(self.logging_service._log_messages) > 200:
                 self.logging_service._log_messages = self.logging_service._log_messages[-200:]

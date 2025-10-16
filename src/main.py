@@ -11,6 +11,7 @@ def main():
     parser = argparse.ArgumentParser(description='Apt-Ex Package Manager')
     parser.add_argument('--dev-outline', action='store_true', help='Enable development widget outlines')
     parser.add_argument('--dev-logging', action='store_true', help='Automatically open logging window')
+    parser.add_argument('--stdout-log-level', default='WARNING', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Maximum log level to show on stdout (default: WARNING)')
     args = parser.parse_args()
     
     app = QApplication(sys.argv)
@@ -44,7 +45,7 @@ def main():
         app.setStyleSheet("* { border: 1px solid red; }")
     
     package_manager = PackageManager()
-    main_view = MainView(package_manager, dev_logging=args.dev_logging)
+    main_view = MainView(package_manager, dev_logging=args.dev_logging, stdout_log_level=args.stdout_log_level)
     
     # Auto-open log window if --dev-logging is specified
     if args.dev_logging:
