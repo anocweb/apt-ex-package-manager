@@ -10,11 +10,11 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Apt-Ex Package Manager (Dev Outline)",
+            "name": "Apt-Ex Package Manager (Show Logger)",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/main.py",
-            "args": ["--dev-outline"],
+            "args": ["--dev-logging"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         }

@@ -1,13 +1,14 @@
 from PyQt6.QtWidgets import QMainWindow, QGridLayout, QLabel, QPushButton, QWidget
 from PyQt6.QtCore import Qt, QSize, QTimer
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QTextCursor
 from PyQt6 import uic
 from models.package_model import Package
 from settings.app_settings import AppSettings
+from services.logging_service import LoggingService
 import os
 
 class MainView(QMainWindow):
-    def __init__(self, package_manager):
+    def __init__(self, package_manager, dev_logging=False):
         super().__init__()
         self.package_manager = package_manager
         self.current_packages = []
@@ -18,7 +19,32 @@ class MainView(QMainWindow):
         self.app_settings = AppSettings()
         self.cache_updating = False
         self.pending_action = None
+        self.status_timer = None
+        self.status_dots = 0
+        self.status_base_message = ""
+        self.log_messages = []
+        self.log_window = None  # Track log window instance
+        
+        # Initialize logging service
+        self.logging_service = LoggingService()
+        self.logging_service.set_app_log_callback(self.add_log_message)
+        
+        # Enable debug logging if requested
+        if dev_logging:
+            import logging
+            self.logging_service.app_log_handler.setLevel(logging.DEBUG)
+            self.logging_service.debug("Debug logging enabled")
+        
+        # Enable file logging if configured
+        if self.app_settings.get_file_logging_enabled():
+            log_dir = self.app_settings.get_log_directory()
+            self.logging_service.enable_file_logging(log_dir)
+        
         uic.loadUi('src/ui/main_window.ui', self)
+        self.logging_service.debug("Main window UI loaded from file")
+        
+        # Add log icon to status bar
+        self.setup_status_bar_log_icon()
         
         # Set window icon based on theme
         def get_icon_path():
@@ -45,11 +71,15 @@ class MainView(QMainWindow):
             icon.addFile(icon_path, QSize(64, 64))
             self.setWindowIcon(icon)
         
+        self.logging_service.debug("Starting panel loading")
         self.load_panels()
+        self.logging_service.debug("Starting UI setup")
         self.setup_ui()
+        self.logging_service.debug("Restoring window state")
         self.restore_window_state()
 
     def setup_ui(self):
+        self.logging_service.debug("Setting up UI components")
         # Setup content layouts from loaded panels
         home_panel = self.panels['home']
         installed_panel = self.panels['installed']
@@ -87,33 +117,34 @@ class MainView(QMainWindow):
 
         
         # Connect main navigation buttons
-        self.homeBtn.clicked.connect(lambda: self.select_page('home', 0))
-        self.installedBtn.clicked.connect(lambda: self.select_page('installed', 1))
-        self.updatesBtn.clicked.connect(lambda: self.select_page('updates', 2))
-        self.settingsBtn.clicked.connect(lambda: self.select_page('settings', 4))
-        self.aboutBtn.clicked.connect(lambda: self.select_page('about', 5))
+        self.homeBtn.clicked.connect(lambda: (self.logging_service.debug("Home button clicked"), self.select_page('home', 0))[1])
+        self.installedBtn.clicked.connect(lambda: (self.logging_service.debug("Installed button clicked"), self.select_page('installed', 1))[1])
+        self.updatesBtn.clicked.connect(lambda: (self.logging_service.debug("Updates button clicked"), self.select_page('updates', 2))[1])
+        self.settingsBtn.clicked.connect(lambda: (self.logging_service.debug("Settings button clicked"), self.select_page('settings', 4))[1])
+        self.aboutBtn.clicked.connect(lambda: (self.logging_service.debug("About button clicked"), self.select_page('about', 5))[1])
         
         # Connect category buttons
-        self.allAppsBtn.clicked.connect(lambda: self.select_category('all'))
-        self.accessibilityBtn.clicked.connect(lambda: self.select_category('accessibility'))
-        self.developmentBtn.clicked.connect(lambda: self.select_category('development'))
-        self.educationBtn.clicked.connect(lambda: self.select_category('education'))
-        self.gamesBtn.clicked.connect(lambda: self.select_category('games'))
-        self.graphicsBtn.clicked.connect(lambda: self.select_category('graphics'))
-        self.internetBtn.clicked.connect(lambda: self.select_category('internet'))
-        self.multimediaBtn.clicked.connect(lambda: self.select_category('multimedia'))
-        self.officeBtn.clicked.connect(lambda: self.select_category('office'))
-        self.scienceBtn.clicked.connect(lambda: self.select_category('science'))
-        self.systemBtn.clicked.connect(lambda: self.select_category('system'))
-        self.utilitiesBtn.clicked.connect(lambda: self.select_category('utilities'))
+        self.allAppsBtn.clicked.connect(lambda: (self.logging_service.debug("All Apps button clicked"), self.select_category('all'))[1])
+        self.accessibilityBtn.clicked.connect(lambda: (self.logging_service.debug("Accessibility button clicked"), self.select_category('accessibility'))[1])
+        self.developmentBtn.clicked.connect(lambda: (self.logging_service.debug("Development button clicked"), self.select_category('development'))[1])
+        self.educationBtn.clicked.connect(lambda: (self.logging_service.debug("Education button clicked"), self.select_category('education'))[1])
+        self.gamesBtn.clicked.connect(lambda: (self.logging_service.debug("Games button clicked"), self.select_category('games'))[1])
+        self.graphicsBtn.clicked.connect(lambda: (self.logging_service.debug("Graphics button clicked"), self.select_category('graphics'))[1])
+        self.internetBtn.clicked.connect(lambda: (self.logging_service.debug("Internet button clicked"), self.select_category('internet'))[1])
+        self.multimediaBtn.clicked.connect(lambda: (self.logging_service.debug("Multimedia button clicked"), self.select_category('multimedia'))[1])
+        self.officeBtn.clicked.connect(lambda: (self.logging_service.debug("Office button clicked"), self.select_category('office'))[1])
+        self.scienceBtn.clicked.connect(lambda: (self.logging_service.debug("Science button clicked"), self.select_category('science'))[1])
+        self.systemBtn.clicked.connect(lambda: (self.logging_service.debug("System button clicked"), self.select_category('system'))[1])
+        self.utilitiesBtn.clicked.connect(lambda: (self.logging_service.debug("Utilities button clicked"), self.select_category('utilities'))[1])
         
         # Connect View Categories button
         self.viewCategoriesBtn.clicked.connect(lambda: self.view_categories())
         
-        # Set initial selection to last used page
-        last_page = self.app_settings.get_last_selected_page()
-        page_indices = {'home': 0, 'installed': 1, 'updates': 2, 'category': 3, 'settings': 4, 'about': 5}
-        self.select_page(last_page, page_indices.get(last_page, 0))
+        # Add log to status messages
+        self.logging_service.info("Application started")
+        
+        # Set initial selection to home page
+        self.select_page('home', 0)
         self.load_initial_packages()
         
         # Connect settings panel buttons
@@ -135,26 +166,35 @@ class MainView(QMainWindow):
         }
         
         for panel_name, ui_file in panel_files.items():
-            panel_widget = QWidget()
-            ui_path = os.path.join('src', 'ui', ui_file)
-            uic.loadUi(ui_path, panel_widget)
-            self.panels[panel_name] = panel_widget
-            self.contentStack.addWidget(panel_widget)
+            try:
+                panel_widget = QWidget()
+                ui_path = os.path.join('src', 'ui', ui_file)
+                uic.loadUi(ui_path, panel_widget)
+                self.panels[panel_name] = panel_widget
+                self.contentStack.addWidget(panel_widget)
+                self.logging_service.debug(f"Loading UI file: {ui_path}")
+                self.logging_service.info(f"Loaded panel: {panel_name}")
+            except Exception as e:
+                self.logging_service.error(f"Failed to load panel {panel_name}: {e}")
 
     def search_packages(self):
+        self.logging_service.debug("Search packages function called")
         home_panel = self.panels['home']
         query = home_panel.search_input.text()
         if query:
+            self.logging_service.info(f"Searching packages: {query}")
             self.current_packages = self.package_manager.search_packages(query)
         else:
             self.current_packages = self.package_manager.get_installed_packages()
         self.update_package_display()
 
     def load_initial_packages(self):
+        self.logging_service.debug("Loading initial packages")
         self.current_packages = self.package_manager.get_installed_packages()
         self.update_package_display()
 
     def update_package_display(self):
+        self.logging_service.debug(f"Updating package display with {len(self.current_packages)} packages")
         # Clear existing widgets
         for i in reversed(range(self.package_layout.count())):
             self.package_layout.itemAt(i).widget().setParent(None)
@@ -170,6 +210,7 @@ class MainView(QMainWindow):
                 row += 1
 
     def create_package_card(self, package):
+        self.logging_service.debug(f"Creating package card for {package.name}")
         card = QWidget()
         card.setFixedSize(200, 120)
         card.setStyleSheet("QWidget { border: 1px solid gray; border-radius: 5px; padding: 5px; }")
@@ -191,10 +232,12 @@ class MainView(QMainWindow):
         return card
 
     def install_package(self, package_name):
+        self.logging_service.info(f"User requested install: {package_name}")
         self.package_manager.install_package(package_name)
         self.statusbar.showMessage(f"Installing {package_name}...", 3000)
     
     def select_page(self, page_key, page_index):
+        self.logging_service.info(f"Navigated to {page_key} page")
         # Update button selection
         self.update_button_selection(page_key)
         
@@ -230,9 +273,13 @@ class MainView(QMainWindow):
             self.setup_updates_context_actions()
             self.statusbar.showMessage("No updates available", 2000)
         elif page_key == 'settings':
-            self.populate_settings_panel()
-            self.update_default_repository_ui()
-            self.statusbar.showMessage("Settings panel", 2000)
+            try:
+                self.populate_settings_panel()
+                self.update_default_repository_ui()
+                self.statusbar.showMessage("Settings panel", 2000)
+            except Exception as e:
+                self.logging_service.error(f"Failed to populate settings panel: {e}")
+                self.statusbar.showMessage(f"Settings error: {e}", 5000)
         elif page_key == 'about':
             self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
     
@@ -247,6 +294,7 @@ class MainView(QMainWindow):
     
     def _execute_category_selection(self, category):
         """Execute category selection (used directly or after cache update)"""
+        self.logging_service.info(f"Selected category: {category}")
         # Update button selection
         self.update_button_selection(category)
         
@@ -261,6 +309,7 @@ class MainView(QMainWindow):
         from models.package_cache_model import PackageCacheModel
         
         package_cache_model = PackageCacheModel()
+        self.logging_service.info(f"Loading packages for category: {category}")
         
         # Get section mapping for category
         mapping = {
@@ -282,7 +331,7 @@ class MainView(QMainWindow):
         
         if category == 'all':
             # Get all packages
-            package_cache = PackageCache()
+            package_cache = PackageCache(logger=self.logging_service)
             cached_packages = package_cache.get_packages('apt')
             if cached_packages:
                 self.current_packages = cached_packages
@@ -295,6 +344,7 @@ class MainView(QMainWindow):
         self.statusbar.showMessage(f"Showing {category} packages", 2000)
     
     def update_button_selection(self, selected_key):
+        self.logging_service.debug(f"Updating button selection to {selected_key}")
         # Clear previous selection
         if self.selected_button:
             self.selected_button.setProperty("selected", "false")
@@ -337,7 +387,7 @@ class MainView(QMainWindow):
         
         # Get packages from cache
         from cache.package_cache import PackageCache
-        package_cache = PackageCache()
+        package_cache = PackageCache(logger=self.logging_service)
         cached_packages = package_cache.get_packages('apt')
         
         if cached_packages:
@@ -357,10 +407,21 @@ class MainView(QMainWindow):
         """Populate settings panel with source data"""
         from PyQt6.QtWidgets import QTreeWidgetItem
         
+        if 'settings' not in self.panels:
+            self.logging_service.error("Settings panel not found in panels")
+            return
+        
         settings_panel = self.panels['settings']
+        self.logging_service.info("Populating settings panel")
+        
+        # Check if settings panel has required attributes
+        if not hasattr(settings_panel, 'flatpakSources'):
+            self.logging_service.error("Settings panel missing flatpakSources attribute")
+            return
         
         # Populate Flatpak sources
         flatpak_tree = settings_panel.flatpakSources
+        self.logging_service.info("Found flatpakSources widget")
         flatpak_tree.clear()
         flatpak_item = QTreeWidgetItem(["✓ Flathub - dl.flathub.org"])
         flatpak_tree.addTopLevelItem(flatpak_item)
@@ -410,14 +471,17 @@ class MainView(QMainWindow):
     
     def open_apt_sources(self):
         """Open /etc/apt/ folder in default file manager"""
+        self.logging_service.info("Opening APT sources folder")
         import subprocess
         try:
             subprocess.run(['xdg-open', '/etc/apt/'], check=True)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
+            self.logging_service.error(f"Failed to open APT sources: {e}")
             self.statusbar.showMessage("Could not open /etc/apt/ folder", 3000)
     
     def set_default_repository(self, repo_type: str):
         """Set default repository type"""
+        self.logging_service.info(f"Changed default repository to {repo_type}")
         self.app_settings.set_default_repository(repo_type)
         self.update_default_repository_ui()
         self.statusbar.showMessage(f"Set {repo_type.upper()} as default repository", 3000)
@@ -460,12 +524,20 @@ class MainView(QMainWindow):
     
     def closeEvent(self, event):
         """Save window state when closing"""
+        # Save settings before quitting
         self.app_settings.set_window_geometry(self.saveGeometry())
         self.app_settings.set_window_state(self.saveState())
+        self.app_settings.settings.sync()  # Force save to disk
+        
         event.accept()
+        
+        # Exit the entire application after accepting the event
+        from PyQt6.QtWidgets import QApplication
+        QApplication.quit()
     
     def clear_context_actions(self):
         """Clear all context action buttons"""
+        self.logging_service.debug("Clearing context actions")
         layout = self.contextActions.layout()
         while layout.count():
             child = layout.takeAt(0)
@@ -474,6 +546,7 @@ class MainView(QMainWindow):
     
     def add_context_action(self, text: str, callback):
         """Add a context action button"""
+        self.logging_service.debug(f"Adding context action: {text}")
         from PyQt6.QtWidgets import QPushButton
         button = QPushButton(text)
         button.setFixedHeight(30)
@@ -488,21 +561,22 @@ class MainView(QMainWindow):
     
     def refresh_updates(self):
         """Refresh available updates"""
+        self.logging_service.info("Refreshing package updates")
         self.statusbar.showMessage("Refreshing updates...", 2000)
     
     def update_all_packages(self):
         """Update all available packages"""
+        self.logging_service.info("Starting system-wide package update")
         self.statusbar.showMessage("Updating all packages...", 3000)
     
     def populate_caches_on_startup(self):
         """Populate caches if empty or expired on application startup"""
-        from PyQt6.QtCore import QTimer
+        from PyQt6.QtCore import QThread, pyqtSignal
         from cache.category_cache import CategoryCache
         from cache.package_cache import PackageCache
-        from controllers.apt_controller import APTController
         
-        category_cache = CategoryCache()
-        package_cache = PackageCache()
+        category_cache = CategoryCache(logger=self.logging_service)
+        package_cache = PackageCache(logger=self.logging_service)
         
         # Check what needs updating
         update_categories = not category_cache.is_cache_valid('apt')
@@ -512,43 +586,180 @@ class MainView(QMainWindow):
             self.cache_updating = True
             
             if update_categories and update_packages:
-                self.statusbar.showMessage("Updating package data...", 0)
+                self.start_animated_status("Updating package data")
             elif update_categories:
-                self.statusbar.showMessage("Updating package categories...", 0)
+                self.start_animated_status("Updating package categories")
             else:
-                self.statusbar.showMessage("Updating package cache...", 0)
+                self.start_animated_status("Updating package cache")
             
-            # Use QTimer to update cache without blocking UI
-            def update_caches():
-                try:
-                    apt_controller = APTController()
-                    
-                    # Update categories if needed
-                    if update_categories:
-                        categories = apt_controller.get_section_details()
-                        category_cache.set_categories('apt', categories)
-                    
-                    # Update packages if needed
-                    if update_packages:
-                        self.statusbar.showMessage("Loading package details...", 0)
-                        packages = apt_controller.get_all_packages_for_cache()
-                        package_cache.set_packages('apt', packages)
-                    
-                    self.cache_updating = False
-                    self.statusbar.showMessage("Package data updated", 3000)
-                    
-                    # Execute pending action if any
-                    if self.pending_action:
-                        action = self.pending_action
-                        self.pending_action = None
-                        action()
+            # Create worker thread for cache update
+            class CacheUpdateWorker(QThread):
+                finished_signal = pyqtSignal()
+                error_signal = pyqtSignal(str)
+                progress_signal = pyqtSignal(str)
+                count_signal = pyqtSignal(int, int)  # processed, total
+                
+                def __init__(self, update_categories, update_packages):
+                    super().__init__()
+                    self.update_categories = update_categories
+                    self.update_packages = update_packages
+                
+                def run(self):
+                    try:
+                        from controllers.apt_controller import APTController
+                        apt_controller = APTController(logger=self.logging_service)
                         
-                except Exception as e:
-                    self.cache_updating = False
-                    self.statusbar.showMessage(f"Failed to update cache: {str(e)}", 5000)
+                        # Update categories if needed
+                        if self.update_categories:
+                            categories = apt_controller.get_section_details()
+                            category_cache.set_categories('apt', categories)
+                            self.logging_service.info("Category cache updated")
+                        
+                        # Update packages if needed
+                        if self.update_packages:
+                            self.progress_signal.emit("Loading package details")
+                            packages = apt_controller.get_all_packages_for_cache()
+                            
+                            total = len(packages)
+                            self.progress_signal.emit(f"Caching {total} packages")
+                            
+                            # Clear existing packages first
+                            package_cache.clear_cache('apt')
+                            self.logging_service.info("Starting package cache update")
+                            
+                            # Process packages with progress updates
+                            for i, pkg_data in enumerate(packages):
+                                from models.package_cache_model import PackageCache as PackageCacheData
+                                package = PackageCacheData(
+                                    backend=pkg_data['backend'],
+                                    package_id=pkg_data['package_id'],
+                                    name=pkg_data['name'],
+                                    version=pkg_data.get('version'),
+                                    description=pkg_data.get('description'),
+                                    summary=pkg_data.get('summary'),
+                                    section=pkg_data.get('section'),
+                                    architecture=pkg_data.get('architecture'),
+                                    size=pkg_data.get('size'),
+                                    installed_size=pkg_data.get('installed_size'),
+                                    maintainer=pkg_data.get('maintainer'),
+                                    homepage=pkg_data.get('homepage'),
+                                    metadata=pkg_data.get('metadata', {})
+                                )
+                                package_cache.model.create(package)
+                                
+                                # Update progress every 100 packages
+                                if (i + 1) % 100 == 0 or i == total - 1:
+                                    self.count_signal.emit(i + 1, total)
+                        
+                        self.finished_signal.emit()
+                        
+                    except Exception as e:
+                        self.error_signal.emit(str(e))
             
-            # Delay execution to allow UI to load first
-            QTimer.singleShot(100, update_caches)
+            # Create and start worker
+            self.cache_worker = CacheUpdateWorker(update_categories, update_packages)
+            self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
+            self.cache_worker.error_signal.connect(self.on_cache_update_error)
+            self.cache_worker.progress_signal.connect(self.update_status_message)
+            self.cache_worker.count_signal.connect(self.update_progress_count)
+            self.cache_worker.start()
+    
+    def on_cache_update_finished(self):
+        """Handle cache update completion"""
+        self.cache_updating = False
+        self.stop_animated_status()
+        self.logging_service.info("Package cache update completed")
+        self.statusbar.showMessage("Package data updated", 3000)
+        
+        # Execute pending action if any
+        if self.pending_action:
+            action = self.pending_action
+            self.pending_action = None
+            action()
+    
+    def on_cache_update_error(self, error_message):
+        """Handle cache update error"""
+        self.cache_updating = False
+        self.stop_animated_status()
+        self.logging_service.error(f"Cache update failed: {error_message}")
+        self.statusbar.showMessage(f"Failed to update cache: {error_message}", 5000)
+    
+    def start_animated_status(self, base_message):
+        """Start animated status with dots"""
+        self.status_base_message = base_message
+        self.status_dots = 0
+        
+        if self.status_timer:
+            self.status_timer.stop()
+        
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.animate_status_dots)
+        self.status_timer.start(500)  # Update every 500ms
+        self.animate_status_dots()  # Show initial message
+    
+    def stop_animated_status(self):
+        """Stop animated status"""
+        if self.status_timer:
+            self.status_timer.stop()
+            self.status_timer = None
+    
+    def animate_status_dots(self):
+        """Animate the dots in status message"""
+        dots = "." * (self.status_dots + 1)
+        self.statusbar.showMessage(f"{self.status_base_message}{dots}")
+        self.status_dots = (self.status_dots + 1) % 3
+    
+    def update_status_message(self, message):
+        """Update the base status message"""
+        self.status_base_message = message
+    
+    def update_progress_count(self, processed, total):
+        """Update status with progress count"""
+        self.status_base_message = f"Cached {processed}/{total} packages"
+    
+    def setup_status_bar_log_icon(self):
+        """Add log icon to the right side of status bar"""
+        from PyQt6.QtWidgets import QPushButton
+        from PyQt6.QtCore import QSize
+        
+        self.log_button = QPushButton("📋")
+        self.log_button.setFixedSize(QSize(30, 20))
+        self.log_button.setToolTip("View application logs")
+        self.log_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: palette(highlight);
+                border-radius: 3px;
+            }
+        """)
+        self.log_button.clicked.connect(self.show_log_view)
+        self.statusbar.addPermanentWidget(self.log_button)
+    
+    def add_log_message(self, message):
+        """Add message to log with timestamp"""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_messages.append(f"[{timestamp}] {message}")
+        
+        # Keep only last 100 messages
+        if len(self.log_messages) > 100:
+            self.log_messages = self.log_messages[-100:]
+    
+    def show_log_view(self):
+        """Show log view window"""
+        if self.log_window and not self.log_window.isHidden():
+            # Bring existing window to front
+            self.log_window.raise_()
+            self.log_window.activateWindow()
+        else:
+            # Create new window
+            from views.log_view import LogView
+            self.log_window = LogView(self.logging_service)
+            self.log_window.show()
     
     def populate_category_list(self):
         """Populate the category list with cached APT sections"""
@@ -561,7 +772,7 @@ class MainView(QMainWindow):
         tree.clear()
         
         # Get cached categories or fetch fresh data
-        cache = CategoryCache()
+        cache = CategoryCache(logger=self.logging_service)
         section_details = cache.get_categories('apt')
         
         if section_details is None:

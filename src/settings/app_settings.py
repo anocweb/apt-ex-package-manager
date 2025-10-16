@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QSettings
 from typing import Any, Optional
+import os
 
 class AppSettings:
     """Application settings manager using QSettings"""
@@ -17,7 +18,9 @@ class AppSettings:
             'sidebar_width': 220,
             'last_selected_page': 'home',
             'repository_preferences': {},
-            'ui_theme': 'system'
+            'ui_theme': 'system',
+            'file_logging_enabled': False,
+            'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs')
         }
         
         for key, value in defaults.items():
@@ -102,3 +105,20 @@ class AppSettings:
         """Import settings from dictionary"""
         for key, value in settings_dict.items():
             self.set(key, value)
+    
+    def get_file_logging_enabled(self) -> bool:
+        """Get file logging preference"""
+        return self.get('file_logging_enabled', False)
+    
+    def set_file_logging_enabled(self, enabled: bool):
+        """Set file logging preference"""
+        self.set('file_logging_enabled', enabled)
+    
+    def get_log_directory(self) -> str:
+        """Get log directory path"""
+        default_dir = os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs')
+        return self.get('log_directory', default_dir)
+    
+    def set_log_directory(self, directory: str):
+        """Set log directory path"""
+        self.set('log_directory', directory)

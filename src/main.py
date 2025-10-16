@@ -10,6 +10,7 @@ from controllers.package_manager import PackageManager
 def main():
     parser = argparse.ArgumentParser(description='Apt-Ex Package Manager')
     parser.add_argument('--dev-outline', action='store_true', help='Enable development widget outlines')
+    parser.add_argument('--dev-logging', action='store_true', help='Automatically open logging window')
     args = parser.parse_args()
     
     app = QApplication(sys.argv)
@@ -43,8 +44,21 @@ def main():
         app.setStyleSheet("* { border: 1px solid red; }")
     
     package_manager = PackageManager()
-    main_view = MainView(package_manager)
+    main_view = MainView(package_manager, dev_logging=args.dev_logging)
+    
+    # Auto-open log window if --dev-logging is specified
+    if args.dev_logging:
+        
+        from views.log_view import LogView
+        main_view.log_window = LogView(main_view.logging_service)
+        # Position and show log window first
+        main_pos = main_view.pos()
+        main_view.log_window.move(main_pos.x() + 50, main_pos.y() + 50)
+        main_view.log_window.show()
+    
+    # Show main window last so it appears in front
     main_view.show()
+    
     sys.exit(app.exec())
 
 if __name__ == "__main__":
