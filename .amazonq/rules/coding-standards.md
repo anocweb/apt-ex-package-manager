@@ -2,6 +2,12 @@
 
 > **Note**: Detailed development patterns and conventions are documented in the Memory Bank (guidelines.md). This file covers project-specific standards.
 
+## Code Style
+- Follow PEP8 recommendations and standards
+- Use proper naming conventions (snake_case for functions/variables, PascalCase for classes)
+- Maintain consistent code formatting and style
+- Use type hints for function parameters and return values
+
 ## Error Handling
 - Provide user-friendly error messages
 - Log technical errors for debugging

@@ -32,15 +32,17 @@ def main():
         # Fallback to light icon
         return os.path.join(base_path, 'app-icon.svg')
     
-    icon_path = get_icon_path()
-    if os.path.exists(icon_path):
-        icon = QIcon(icon_path)
-        # Add multiple sizes to ensure proper scaling
-        icon.addFile(icon_path, QSize(16, 16))
-        icon.addFile(icon_path, QSize(32, 32))
-        icon.addFile(icon_path, QSize(48, 48))
-        icon.addFile(icon_path, QSize(64, 64))
-        app.setWindowIcon(icon)
+    try:
+        icon_path = get_icon_path()
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            icon.addFile(icon_path, QSize(16, 16))
+            icon.addFile(icon_path, QSize(32, 32))
+            icon.addFile(icon_path, QSize(48, 48))
+            icon.addFile(icon_path, QSize(64, 64))
+            app.setWindowIcon(icon)
+    except Exception:
+        pass
     
     if args.dev_outline:
         app.setStyleSheet("* { border: 1px solid red; }")

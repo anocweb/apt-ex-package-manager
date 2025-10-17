@@ -53,6 +53,7 @@ class AptRepository(BaseRepository):
     def _fallback_get_sources(self) -> List[RepositorySource]:
         """Fallback method using apt-cache policy"""
         try:
+            # Safe: hardcoded command with no user input
             result = subprocess.run(['apt-cache', 'policy'], 
                                   capture_output=True, text=True, check=True)
             sources = []
@@ -103,7 +104,7 @@ class AptRepository(BaseRepository):
     def supports_system_scope(self) -> bool:
         return True
     
-    def get_categories(self) -> Dict:
+    def get_categories(self):
         """Get package categories from sections"""
         if not self.is_available:
             return {}

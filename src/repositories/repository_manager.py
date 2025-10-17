@@ -1,3 +1,4 @@
+import subprocess
 from typing import List, Dict, Optional
 from .base_repository import BaseRepository, RepositorySource
 from .apt_repository import AptRepository
@@ -118,7 +119,7 @@ class RepositoryManager:
                 if categories:
                     self.category_cache.set_categories(repo_name, categories)
                     return categories
-            except Exception:
+            except (subprocess.SubprocessError, ImportError, AttributeError, OSError):
                 pass
         
         # Return cached data if available, even if stale

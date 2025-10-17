@@ -84,7 +84,6 @@ class ExpandableItem(QWidget):
         # Message label
         self.message_label = QLabel(self.message)
         self.message_label.setWordWrap(True)
-        # self.message_label.setStyleSheet("QLabel { background: transparent; }")
         header_layout.addWidget(self.message_label, 1)
         
         layout.addLayout(header_layout)
@@ -219,14 +218,12 @@ class ExpandableItem(QWidget):
         texts = []
         for i, item in enumerate(items):
             if i > 0:
-                # Check if items are consecutive by comparing their positions
                 prev_item = items[i-1]
-                current_pos = item.parent().layout().indexOf(item)
-                prev_pos = prev_item.parent().layout().indexOf(prev_item)
-                
-                if current_pos - prev_pos > 1:
-                    texts.append("...")
-            
+                if item.parent() and prev_item.parent():
+                    current_pos = item.parent().layout().indexOf(item)
+                    prev_pos = prev_item.parent().layout().indexOf(prev_item)
+                    if current_pos - prev_pos > 1:
+                        texts.append("...")
             texts.append(item.message)
         
         clipboard = QApplication.clipboard()
@@ -238,14 +235,12 @@ class ExpandableItem(QWidget):
         for i, item in enumerate(items):
             if item.data:
                 if i > 0:
-                    # Check if items are consecutive by comparing their positions
                     prev_item = items[i-1]
-                    current_pos = item.parent().layout().indexOf(item)
-                    prev_pos = prev_item.parent().layout().indexOf(prev_item)
-                    
-                    if current_pos - prev_pos > 1:
-                        texts.append("...")
-                
+                    if item.parent() and prev_item.parent():
+                        current_pos = item.parent().layout().indexOf(item)
+                        prev_pos = prev_item.parent().layout().indexOf(prev_item)
+                        if current_pos - prev_pos > 1:
+                            texts.append("...")
                 texts.append(item.data)
         
         clipboard = QApplication.clipboard()
@@ -256,14 +251,12 @@ class ExpandableItem(QWidget):
         texts = []
         for i, item in enumerate(items):
             if i > 0:
-                # Check if items are consecutive by comparing their positions
                 prev_item = items[i-1]
-                current_pos = item.parent().layout().indexOf(item)
-                prev_pos = prev_item.parent().layout().indexOf(prev_item)
-                
-                if current_pos - prev_pos > 1:
-                    texts.append("...")
-            
+                if item.parent() and prev_item.parent():
+                    current_pos = item.parent().layout().indexOf(item)
+                    prev_pos = prev_item.parent().layout().indexOf(prev_item)
+                    if current_pos - prev_pos > 1:
+                        texts.append("...")
             texts.append(item.message)
             if item.data:
                 texts.append(item.data)

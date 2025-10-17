@@ -126,8 +126,11 @@ class AppSettings:
     
     def get_odrs_enabled(self) -> bool:
         """Get ODRS (Open Desktop Ratings Service) preference"""
-        value = self.get('odrs_enabled', True)
-        return value if isinstance(value, bool) else str(value).lower() == 'true'
+        try:
+            value = self.get('odrs_enabled', True)
+            return value if isinstance(value, bool) else str(value).lower() == 'true'
+        except Exception:
+            return True
     
     def set_odrs_enabled(self, enabled: bool):
         """Set ODRS (Open Desktop Ratings Service) preference"""

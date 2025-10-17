@@ -57,6 +57,12 @@ class LoggingService(QObject):
     
     def enable_file_logging(self, log_dir: str):
         """Enable logging to file"""
+        # Sanitize path to prevent directory traversal (CWE-22)
+        log_dir = os.path.abspath(os.path.expanduser(log_dir))
+        home_dir = os.path.expanduser('~')
+        if not log_dir.startswith(home_dir):
+            raise ValueError(f"Log directory must be within user home directory: {home_dir}")
+        
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, f"{self.app_name}.log")
         
@@ -89,7 +95,6 @@ class LoggingService(QObject):
         
         # Register this logger
         self.registered_loggers.add(full_name)
-        self.debug(f"Registered logger: {full_name}")
         
         # Add the same handlers if not already added
         if not named_logger.handlers:
@@ -211,29 +216,26 @@ class AppLogHandler(logging.Handler):
     
     def emit(self, record):
         """Emit log record to app callback"""
-        try:
-            message = self.format(record)
-            self.callback(message)
-            
-            # Handle data field if present
-            data_json = None
-            if hasattr(record, 'data') and record.data is not None:
-                try:
-                    data_json = json.dumps(record.data, indent=2, default=str)
-                except Exception:
-                    data_json = str(record.data)
-            
-            # Store message with optional data for log view
-            log_entry = {
-                'message': message,
-                'data': data_json
-            }
-            self.logging_service._log_messages.append(log_entry)
-            
-            # Keep only last 200 messages
-            if len(self.logging_service._log_messages) > 200:
-                self.logging_service._log_messages = self.logging_service._log_messages[-200:]
-            # Emit signal for log view updates
-            self.logging_service.log_updated.emit()
-        except Exception:
-            pass  # Ignore errors in logging to prevent recursion
+        message = self.format(record)
+        self.callback(message)
+        
+        # Handle data field if present
+        data_json = None
+        if hasattr(record, 'data') and record.data is not None:
+            try:
+                data_json = json.dumps(record.data, indent=2, default=str)
+            except (TypeError, ValueError):
+                data_json = str(record.data)
+        
+        # Store message with optional data for log view
+        log_entry = {
+            'message': message,
+            'data': data_json
+        }
+        self.logging_service._log_messages.append(log_entry)
+        
+        # Keep only last 200 messages
+        if len(self.logging_service._log_messages) > 200:
+            self.logging_service._log_messages = self.logging_service._log_messages[-200:]
+        # Emit signal for log view updates
+        self.logging_service.log_updated.emit()

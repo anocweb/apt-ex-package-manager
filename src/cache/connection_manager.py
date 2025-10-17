@@ -29,7 +29,7 @@ class SQLiteConnectionManager:
     
     def _initialize_pool(self):
         """Create initial connections with optimized settings"""
-        for i in range(self.pool_size):
+        for _ in range(self.pool_size):
             conn = self._create_connection()
             self._pool.put(conn)
         
@@ -68,7 +68,9 @@ class SQLiteConnectionManager:
             # Pool exhausted, create temporary connection
             if self.logger:
                 self.logger.warning(f"Connection pool exhausted, creating temporary connection")
-            return self._create_connection()
+            conn = self._create_connection()
+            self._thread_local.connection = conn
+            return conn
     
     def return_connection(self, conn: sqlite3.Connection):
         """Return connection to pool"""

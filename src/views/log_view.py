@@ -97,13 +97,11 @@ class LogView(QMainWindow):
         # Copy logs button
         copy_button = QPushButton("Copy Output")
         copy_button.clicked.connect(self.copy_logs)
-        copy_button.setMinimumWidth(copy_button.sizeHint().width() + 20)  # Add padding
         button_layout.addWidget(copy_button)
         
         # Save to file button
         save_button = QPushButton("Save Output")
         save_button.clicked.connect(self.save_to_file)
-        save_button.setMinimumWidth(save_button.sizeHint().width() + 20)  # Add padding
         button_layout.addWidget(save_button)
         
         layout.addLayout(button_layout)

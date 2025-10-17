@@ -1,9 +1,25 @@
 import subprocess
+import re
 from typing import List
 from .base_repository import BaseRepository, RepositorySource
 
 class FlatpakRepository(BaseRepository):
     """Flatpak repository implementation"""
+    
+    @staticmethod
+    def _validate_remote_name(name: str) -> bool:
+        """Validate remote name contains only safe characters"""
+        return bool(re.match(r'^[a-zA-Z0-9._-]+$', name)) and len(name) <= 255
+    
+    @staticmethod
+    def _validate_scope(scope: str) -> bool:
+        """Validate scope is either 'user' or 'system'"""
+        return scope in ('user', 'system')
+    
+    @staticmethod
+    def _validate_url(url: str) -> bool:
+        """Validate URL format"""
+        return bool(re.match(r'^https?://', url)) and len(url) <= 2048
     
     @property
     def name(self) -> str:
@@ -37,10 +53,10 @@ class FlatpakRepository(BaseRepository):
         try:
             result = subprocess.run([
                 'flatpak', 'remotes', f'--{scope}', '--show-details'
-            ], capture_output=True, text=True, check=True)
+            ], capture_output=True, text=True, check=True, timeout=10)
             
             return self._parse_remotes(result.stdout, scope)
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return []
     
     def _parse_remotes(self, output: str, scope: str) -> List[RepositorySource]:
@@ -85,6 +101,9 @@ class FlatpakRepository(BaseRepository):
     
     def add_source(self, name: str, url: str, scope: str = 'user') -> bool:
         """Add Flatpak remote"""
+        if not self._validate_remote_name(name) or not self._validate_scope(scope) or not self._validate_url(url):
+            return False
+        
         try:
             subprocess.run([
                 'flatpak', 'remote-add', f'--{scope}', name, url
@@ -95,6 +114,9 @@ class FlatpakRepository(BaseRepository):
     
     def remove_source(self, name: str, scope: str = 'user') -> bool:
         """Remove Flatpak remote"""
+        if not self._validate_remote_name(name) or not self._validate_scope(scope):
+            return False
+        
         try:
             subprocess.run([
                 'flatpak', 'remote-delete', f'--{scope}', name
@@ -105,6 +127,9 @@ class FlatpakRepository(BaseRepository):
     
     def enable_source(self, name: str, scope: str = 'user') -> bool:
         """Enable Flatpak remote"""
+        if not self._validate_remote_name(name) or not self._validate_scope(scope):
+            return False
+        
         try:
             subprocess.run([
                 'flatpak', 'remote-modify', f'--{scope}', '--enable', name
@@ -115,6 +140,9 @@ class FlatpakRepository(BaseRepository):
     
     def disable_source(self, name: str, scope: str = 'user') -> bool:
         """Disable Flatpak remote"""
+        if not self._validate_remote_name(name) or not self._validate_scope(scope):
+            return False
+        
         try:
             subprocess.run([
                 'flatpak', 'remote-modify', f'--{scope}', '--disable', name

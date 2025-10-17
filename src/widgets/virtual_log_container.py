@@ -55,7 +55,7 @@ class VirtualLogContainer(QScrollArea):
     def perform_update(self):
         """Perform the actual virtual scrolling update"""
         # Clear existing widgets
-        for widget in self.visible_widgets.values():
+        for widget in list(self.visible_widgets.values()):
             widget.setParent(None)
         self.visible_widgets.clear()
         

@@ -116,27 +116,33 @@ class DatabaseManager:
     
     def is_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        with self.connection_manager.connection() as conn:
-            cursor = conn.execute('''
-                SELECT 1 FROM category_cache 
-                WHERE backend = ? 
-                AND datetime(last_updated) > datetime('now', '-{} hours')
-                LIMIT 1
-            '''.format(max_age_hours), (backend,))
-            
-            return cursor.fetchone() is not None
+        try:
+            with self.connection_manager.connection() as conn:
+                cursor = conn.execute('''
+                    SELECT 1 FROM category_cache 
+                    WHERE backend = ? 
+                    AND datetime(last_updated) > datetime('now', '-{} hours')
+                    LIMIT 1
+                '''.format(max_age_hours), (backend,))
+                
+                return cursor.fetchone() is not None
+        except sqlite3.Error:
+            return False
     
     def is_package_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
         """Check if package cache is still valid"""
-        with self.connection_manager.connection() as conn:
-            cursor = conn.execute('''
-                SELECT 1 FROM package_cache 
-                WHERE backend = ? 
-                AND datetime(last_updated) > datetime('now', '-{} hours')
-                LIMIT 1
-            '''.format(max_age_hours), (backend,))
-            
-            return cursor.fetchone() is not None
+        try:
+            with self.connection_manager.connection() as conn:
+                cursor = conn.execute('''
+                    SELECT 1 FROM package_cache 
+                    WHERE backend = ? 
+                    AND datetime(last_updated) > datetime('now', '-{} hours')
+                    LIMIT 1
+                '''.format(max_age_hours), (backend,))
+                
+                return cursor.fetchone() is not None
+        except sqlite3.Error:
+            return False
     
     def close(self):
         """Close connection manager"""

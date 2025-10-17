@@ -68,28 +68,31 @@ class PackageCacheModel:
     
     def read(self, package_cache_id: int) -> Optional[PackageCache]:
         """Read a package by ID with metadata"""
-        with self.conn_mgr.connection() as conn:
-            # Get package
-            cursor = conn.execute('''
-                SELECT id, backend, package_id, name, version, description, summary, 
-                       section, architecture, size, installed_size, maintainer, homepage, 
-                       license, source_url, icon_url, last_updated
-                FROM package_cache WHERE id = ?
-            ''', (package_cache_id,))
-            
-            row = cursor.fetchone()
-            if not row:
-                return None
-            
-            package = PackageCache(*row)
-            
-            # Get metadata
-            metadata_cursor = conn.execute('''
-                SELECT key, value FROM package_metadata WHERE package_cache_id = ?
-            ''', (package_cache_id,))
-            
-            package.metadata = dict(metadata_cursor.fetchall())
-            return package
+        try:
+            with self.conn_mgr.connection() as conn:
+                # Get package
+                cursor = conn.execute('''
+                    SELECT id, backend, package_id, name, version, description, summary, 
+                           section, architecture, size, installed_size, maintainer, homepage, 
+                           license, source_url, icon_url, last_updated
+                    FROM package_cache WHERE id = ?
+                ''', (package_cache_id,))
+                
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                
+                package = PackageCache(*row)
+                
+                # Get metadata
+                metadata_cursor = conn.execute('''
+                    SELECT key, value FROM package_metadata WHERE package_cache_id = ?
+                ''', (package_cache_id,))
+                
+                package.metadata = dict(metadata_cursor.fetchall())
+                return package
+        except Exception:
+            return None
     
     def update(self, package: PackageCache) -> bool:
         """Update an existing package and metadata"""
@@ -170,58 +173,61 @@ class PackageCacheModel:
     
     def search(self, backend: str, query: str) -> List[PackageCache]:
         """Search packages by name or description with optimized ranking"""
-        with self.conn_mgr.connection() as conn:
-            # Optimized search with ranking: exact name match first, then prefix, then contains
-            cursor = conn.execute('''
-                SELECT id, backend, package_id, name, version, description, summary, 
-                       section, architecture, size, installed_size, maintainer, homepage, 
-                       license, source_url, icon_url, last_updated,
-                       CASE 
-                           WHEN name = ? THEN 1
-                           WHEN name LIKE ? THEN 2
-                           WHEN name LIKE ? THEN 3
-                           WHEN description LIKE ? THEN 4
-                           ELSE 5
-                       END as rank
-                FROM package_cache 
-                WHERE backend = ? AND (
-                    name LIKE ? OR 
-                    description LIKE ?
-                )
-                ORDER BY rank, name
-                LIMIT 100
-            ''', (query, f'{query}%', f'%{query}%', f'%{query}%', backend, f'%{query}%', f'%{query}%'))
-            
-            packages = []
-            package_ids = []
-            for row in cursor.fetchall():
-                # Exclude rank column from PackageCache constructor
-                package = PackageCache(*row[:-1])
-                package.metadata = {}
-                packages.append(package)
-                package_ids.append(package.id)
-            
-            # Get metadata efficiently
-            if package_ids:
-                placeholders = ','.join('?' * len(package_ids))
-                metadata_cursor = conn.execute(f'''
-                    SELECT package_cache_id, key, value 
-                    FROM package_metadata 
-                    WHERE package_cache_id IN ({placeholders})
-                ''', package_ids)
+        try:
+            with self.conn_mgr.connection() as conn:
+                # Optimized search with ranking: exact name match first, then prefix, then contains
+                cursor = conn.execute('''
+                    SELECT id, backend, package_id, name, version, description, summary, 
+                           section, architecture, size, installed_size, maintainer, homepage, 
+                           license, source_url, icon_url, last_updated,
+                           CASE 
+                               WHEN name = ? THEN 1
+                               WHEN name LIKE ? THEN 2
+                               WHEN name LIKE ? THEN 3
+                               WHEN description LIKE ? THEN 4
+                               ELSE 5
+                           END as rank
+                    FROM package_cache 
+                    WHERE backend = ? AND (
+                        name LIKE ? OR 
+                        description LIKE ?
+                    )
+                    ORDER BY rank, name
+                    LIMIT 100
+                ''', (query, f'{query}%', f'%{query}%', f'%{query}%', backend, f'%{query}%', f'%{query}%'))
                 
-                # Group metadata by package ID
-                metadata_by_id = {}
-                for pkg_id, key, value in metadata_cursor.fetchall():
-                    if pkg_id not in metadata_by_id:
-                        metadata_by_id[pkg_id] = {}
-                    metadata_by_id[pkg_id][key] = value
+                packages = []
+                package_ids = []
+                for row in cursor.fetchall():
+                    # Exclude rank column from PackageCache constructor
+                    package = PackageCache(*row[:-1])
+                    package.metadata = {}
+                    packages.append(package)
+                    package_ids.append(package.id)
                 
-                # Assign metadata to packages
-                for package in packages:
-                    package.metadata = metadata_by_id.get(package.id, {})
-            
-            return packages
+                # Get metadata efficiently
+                if package_ids:
+                    placeholders = ','.join('?' * len(package_ids))
+                    metadata_cursor = conn.execute(f'''
+                        SELECT package_cache_id, key, value 
+                        FROM package_metadata 
+                        WHERE package_cache_id IN ({placeholders})
+                    ''', package_ids)
+                    
+                    # Group metadata by package ID
+                    metadata_by_id = {}
+                    for pkg_id, key, value in metadata_cursor.fetchall():
+                        if pkg_id not in metadata_by_id:
+                            metadata_by_id[pkg_id] = {}
+                        metadata_by_id[pkg_id][key] = value
+                    
+                    # Assign metadata to packages
+                    for package in packages:
+                        package.metadata = metadata_by_id.get(package.id, {})
+                
+                return packages
+        except Exception:
+            return []
     
     def get_summary_by_sections(self, backend: str, sections: List[str], include_rating: bool = False) -> List[PackageSummary]:
         """Get lightweight package summaries for category display"""
@@ -270,7 +276,7 @@ class PackageCacheModel:
             cursor = conn.execute(query, params)
             
             summaries = []
-            for row in cursor.fetchall():
+            for row in cursor:
                 if include_rating and len(row) == 5:
                     summaries.append(PackageSummary(row[0], row[1], row[2], row[3], row[4]))
                 else:
@@ -295,7 +301,8 @@ class PackageCacheModel:
         with self.conn_mgr.connection() as conn:
             # Check if section_counts is populated
             cursor = conn.execute('SELECT COUNT(*) FROM section_counts WHERE backend = ?', (backend,))
-            if cursor.fetchone()[0] == 0:
+            count = cursor.fetchone()[0]
+            if count == 0:
                 # Fallback: compute and cache counts
                 self.update_section_counts(backend)
             

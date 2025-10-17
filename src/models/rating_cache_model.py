@@ -101,9 +101,12 @@ class RatingCacheModel:
     
     def clear_expired(self, ttl: int = 3600):
         """Clear all expired ratings"""
-        cutoff_time = time.time() - ttl
-        with self.connection_manager.connection() as conn:
-            conn.execute("DELETE FROM rating_cache WHERE cached_at < ?", (cutoff_time,))
+        try:
+            cutoff_time = time.time() - ttl
+            with self.connection_manager.connection() as conn:
+                conn.execute("DELETE FROM rating_cache WHERE cached_at < ?", (cutoff_time,))
+        except Exception:
+            pass
     
     def clear_all(self):
         """Clear all cached ratings"""

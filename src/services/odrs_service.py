@@ -149,29 +149,32 @@ class ODRSService:
     
     def _parse_rating_data(self, app_id: str, data: dict) -> PackageRating:
         """Parse ODRS rating data into PackageRating object"""
-        # ODRS uses star0, star1, star2, star3, star4, star5
-        total_reviews = data.get('total', 0)
-        
-        if total_reviews == 0:
+        try:
+            # ODRS uses star0, star1, star2, star3, star4, star5
+            total_reviews = data.get('total', 0)
+            
+            if total_reviews == 0:
+                return PackageRating(app_id=app_id, rating=0, review_count=0, star_counts={})
+            
+            # Calculate weighted average (star0 is ignored, star1-star5 are 1-5 stars)
+            weighted_sum = 0
+            star_counts = {}
+            
+            for star in range(1, 6):  # 1-5 stars
+                count = data.get(f'star{star}', 0)
+                star_counts[star] = count
+                weighted_sum += star * count
+            
+            average_rating = weighted_sum / total_reviews if total_reviews > 0 else 0
+            
+            return PackageRating(
+                app_id=app_id,
+                rating=round(average_rating, 1),
+                review_count=total_reviews,
+                star_counts=star_counts
+            )
+        except Exception:
             return PackageRating(app_id=app_id, rating=0, review_count=0, star_counts={})
-        
-        # Calculate weighted average (star0 is ignored, star1-star5 are 1-5 stars)
-        weighted_sum = 0
-        star_counts = {}
-        
-        for star in range(1, 6):  # 1-5 stars
-            count = data.get(f'star{star}', 0)
-            star_counts[star] = count
-            weighted_sum += star * count
-        
-        average_rating = weighted_sum / total_reviews if total_reviews > 0 else 0
-        
-        return PackageRating(
-            app_id=app_id,
-            rating=round(average_rating, 1),
-            review_count=total_reviews,
-            star_counts=star_counts
-        )
     
     def _get_cached_rating(self, app_id: str) -> Optional[PackageRating]:
         """Get rating from SQLite cache if not expired"""
@@ -219,3 +222,12 @@ class ODRSService:
         }
         
         return mappings.get(package_name, f"{package_name}.desktop")
+    
+    def close(self):
+        """Close the requests session to release resources"""
+        if self.session:
+            self.session.close()
+    
+    def __del__(self):
+        """Cleanup on destruction"""
+        self.close()
