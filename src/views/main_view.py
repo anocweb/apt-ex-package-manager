@@ -790,14 +790,8 @@ class MainView(QMainWindow):
                         # Delete stale packages not updated in this refresh
                         self.logging_service.info("Removing stale packages")
                         max_age_minutes = min(10, 24 * 60)  # 10 min or cache TTL, whichever is smaller
-                        with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
-                            cursor = conn.execute('''
-                                DELETE FROM package_cache 
-                                WHERE backend = ? 
-                                AND datetime(last_updated) < datetime('now', ? || ' minutes')
-                            ''', ('apt', f'-{max_age_minutes}'))
-                            deleted = cursor.rowcount
-                            self.logging_service.info(f"Removed {deleted} stale packages")
+                        deleted = self.cache_manager.package_cache.model.delete_stale_packages('apt', max_age_minutes)
+                        self.logging_service.info(f"Removed {deleted} stale packages")
                         
                         # Update section counts after all packages cached (outside transaction)
                         self.logging_service.info("Updating section counts")

@@ -28,6 +28,7 @@
 - **Backend Controllers**: APT, Flatpak, and AppImage-specific implementations
 - **Models**: Unified package representation with backend-specific metadata
 - **Separation**: Views handle UI, Manager coordinates backends, Controllers handle backend logic
+- **Database Access**: All database operations MUST go through model classes - no direct SQL in views or controllers
 
 ### Class Structure
 - **Constructor Pattern**: `__init__(self, ...)` with parameter assignment

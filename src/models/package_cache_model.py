@@ -326,6 +326,16 @@ class PackageCacheModel:
             # Update statistics for query optimizer
             conn.execute('ANALYZE section_counts')
     
+    def delete_stale_packages(self, backend: str, max_age_minutes: int) -> int:
+        """Delete packages older than specified age"""
+        with self.conn_mgr.transaction('IMMEDIATE') as conn:
+            cursor = conn.execute('''
+                DELETE FROM package_cache 
+                WHERE backend = ? 
+                AND datetime(last_updated) < datetime('now', ? || ' minutes')
+            ''', (backend, f'-{max_age_minutes}'))
+            return cursor.rowcount
+    
     def get_by_section(self, backend: str, section: str) -> List[PackageCache]:
         """Get packages by section/category"""
         with self.conn_mgr.connection() as conn:
