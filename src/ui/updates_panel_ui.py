@@ -14,16 +14,25 @@ class Ui_UpdatesPanel(object):
         UpdatesPanel.setObjectName("UpdatesPanel")
         UpdatesPanel.resize(750, 600)
         self.updatesLayout = QtWidgets.QVBoxLayout(UpdatesPanel)
+        self.updatesLayout.setContentsMargins(0, 0, 0, 0)
         self.updatesLayout.setSpacing(0)
         self.updatesLayout.setObjectName("updatesLayout")
-        self.updatesContent = QtWidgets.QLabel(parent=UpdatesPanel)
-        self.updatesContent.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.updatesContent.setObjectName("updatesContent")
-        self.updatesLayout.addWidget(self.updatesContent)
+        self.updatesScrollArea = QtWidgets.QScrollArea(parent=UpdatesPanel)
+        self.updatesScrollArea.setWidgetResizable(True)
+        self.updatesScrollArea.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.updatesScrollArea.setObjectName("updatesScrollArea")
+        self.scrollAreaWidgetContents = QtWidgets.QWidget()
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 750, 600))
+        self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
+        self.updatesContainerLayout = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
+        self.updatesContainerLayout.setContentsMargins(0, 0, 0, 0)
+        self.updatesContainerLayout.setSpacing(0)
+        self.updatesContainerLayout.setObjectName("updatesContainerLayout")
+        self.updatesScrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.updatesLayout.addWidget(self.updatesScrollArea)
 
         self.retranslateUi(UpdatesPanel)
         QtCore.QMetaObject.connectSlotsByName(UpdatesPanel)
 
     def retranslateUi(self, UpdatesPanel):
-        _translate = QtCore.QCoreApplication.translate
-        self.updatesContent.setText(_translate("UpdatesPanel", "No updates available"))
+        pass

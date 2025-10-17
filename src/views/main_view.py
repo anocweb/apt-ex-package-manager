@@ -320,7 +320,8 @@ class MainView(QMainWindow):
             self.statusbar.showMessage("Showing installed packages", 2000)
         elif page_key == 'updates':
             self.setup_updates_context_actions()
-            self.statusbar.showMessage("No updates available", 2000)
+            self.statusbar.showMessage("Checking for updates...")
+            self.load_updates()
         elif page_key == 'settings':
             try:
                 self.populate_settings_panel()
@@ -675,7 +676,9 @@ class MainView(QMainWindow):
     def setup_updates_context_actions(self):
         """Setup context actions for updates page"""
         self.add_context_action("🔄 Refresh", self.refresh_updates)
-        self.add_context_action("⬆️ Update All", self.update_all_packages)
+        self.update_all_button = self.add_context_action("⬆️ Update All", self.update_all_packages)
+        self.update_all_button.setEnabled(False)  # Disabled by default
+        self.add_context_action("🧪 Test Updates", self.generate_fake_updates)
     
     def setup_category_context_actions(self):
         """Setup context actions for category pages"""
@@ -685,6 +688,200 @@ class MainView(QMainWindow):
         """Refresh available updates"""
         self.logging_service.info("Refreshing package updates")
         self.statusbar.showMessage("Refreshing updates...", 2000)
+        self.load_updates()
+    
+    def load_updates(self):
+        """Load available package updates"""
+        from PyQt6.QtCore import QThread, pyqtSignal
+        
+        updates_panel = self.panels['updates']
+        
+        # Access the scroll area's widget layout
+        scroll_widget = updates_panel.updatesScrollArea.widget()
+        container_layout = scroll_widget.layout()
+        
+        # Clear existing items
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Create worker thread
+        class UpdateCheckWorker(QThread):
+            finished_signal = pyqtSignal(list)
+            error_signal = pyqtSignal(str)
+            
+            def __init__(self, apt_controller):
+                super().__init__()
+                self.apt_controller = apt_controller
+            
+            def run(self):
+                try:
+                    updates = self.apt_controller.get_upgradable_packages()
+                    self.finished_signal.emit(updates)
+                except Exception as e:
+                    self.error_signal.emit(str(e))
+        
+        # Create and start worker
+        self.update_worker = UpdateCheckWorker(self.package_manager.apt_controller)
+        self.update_worker.finished_signal.connect(self.on_updates_loaded)
+        self.update_worker.error_signal.connect(self.on_updates_error)
+        self.update_worker.start()
+    
+    def on_updates_loaded(self, updates):
+        """Handle updates loaded from worker thread"""
+        from PyQt6.QtWidgets import QLabel
+        from widgets.update_list_item import UpdateListItem
+        
+        updates_panel = self.panels['updates']
+        
+        # Access the scroll area's widget layout
+        scroll_widget = updates_panel.updatesScrollArea.widget()
+        container_layout = scroll_widget.layout()
+        
+        # Clear loading message
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        if not updates:
+            # No updates available
+            from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
+            
+            no_updates_label = QLabel("✓ All packages are up to date")
+            no_updates_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            no_updates_label.setStyleSheet("font-size: 18px; color: palette(window-text);")
+            
+            # Add top spacer
+            top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            container_layout.addItem(top_spacer)
+            
+            container_layout.addWidget(no_updates_label)
+            
+            # Add bottom spacer
+            bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            container_layout.addItem(bottom_spacer)
+            
+            # Force layout update
+            scroll_widget.updateGeometry()
+            updates_panel.updatesScrollArea.updateGeometry()
+            
+            self.statusbar.showMessage("No updates available", 3000)
+            
+            # Disable Update All button
+            if hasattr(self, 'update_all_button'):
+                self.update_all_button.setEnabled(False)
+        else:
+            # Sort: security updates first
+            security_updates = [u for u in updates if u.get('is_security', False)]
+            regular_updates = [u for u in updates if not u.get('is_security', False)]
+            sorted_updates = security_updates + regular_updates
+            
+            # Add update items
+            for update_info in sorted_updates:
+                item = UpdateListItem(update_info)
+                item.update_requested.connect(self.update_package)
+                container_layout.addWidget(item)
+            
+            # Add spacer at bottom
+            from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
+            spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            container_layout.addItem(spacer)
+            
+            # Force layout update
+            scroll_widget = updates_panel.updatesScrollArea.widget()
+            scroll_widget.updateGeometry()
+            updates_panel.updatesScrollArea.updateGeometry()
+            
+            security_count = len(security_updates)
+            total_count = len(updates)
+            if security_count > 0:
+                self.statusbar.showMessage(
+                    f"Found {total_count} updates ({security_count} security)", 5000
+                )
+            else:
+                self.statusbar.showMessage(f"Found {total_count} updates", 3000)
+            
+            # Enable Update All button
+            if hasattr(self, 'update_all_button'):
+                self.update_all_button.setEnabled(True)
+    
+    def on_updates_error(self, error_message):
+        """Handle error loading updates"""
+        from PyQt6.QtWidgets import QLabel
+        
+        updates_panel = self.panels['updates']
+        container_layout = updates_panel.updatesContainerLayout
+        
+        # Clear loading message
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        error_label = QLabel(f"Error checking for updates: {error_message}")
+        error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        error_label.setStyleSheet("color: #FF6B6B; font-size: 14px;")
+        container_layout.addWidget(error_label)
+        
+        self.statusbar.showMessage("Failed to check for updates", 5000)
+    
+    def update_package(self, package_name):
+        """Update a single package"""
+        self.logging_service.info(f"User requested update: {package_name}")
+        # TODO: Implement actual update logic
+        self.statusbar.showMessage(f"Updating {package_name}...", 3000)
+    
+    def generate_fake_updates(self):
+        """Generate fake updates for testing UI"""
+        fake_updates = [
+            {
+                'name': 'firefox',
+                'description': 'Safe and easy web browser from Mozilla',
+                'current_version': '120.0',
+                'new_version': '121.0',
+                'is_security': True
+            },
+            {
+                'name': 'linux-kernel',
+                'description': 'Linux kernel security update',
+                'current_version': '6.5.0-14',
+                'new_version': '6.5.0-15',
+                'is_security': True
+            },
+            {
+                'name': 'vim',
+                'description': 'Vi IMproved - enhanced vi editor',
+                'current_version': '9.0.1000',
+                'new_version': '9.0.2000',
+                'is_security': False
+            },
+            {
+                'name': 'git',
+                'description': 'Fast, scalable, distributed revision control system',
+                'current_version': '2.40.0',
+                'new_version': '2.43.0',
+                'is_security': False
+            },
+            {
+                'name': 'python3',
+                'description': 'Interactive high-level object-oriented language',
+                'current_version': '3.11.4',
+                'new_version': '3.11.7',
+                'is_security': False
+            },
+            {
+                'name': 'openssl',
+                'description': 'Secure Sockets Layer toolkit - cryptographic utility',
+                'current_version': '3.0.10',
+                'new_version': '3.0.12',
+                'is_security': True
+            }
+        ]
+        
+        self.logging_service.info("Generating fake updates for testing")
+        self.on_updates_loaded(fake_updates)
     
     def update_all_packages(self):
         """Update all available packages"""

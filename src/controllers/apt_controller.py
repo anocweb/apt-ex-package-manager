@@ -156,6 +156,52 @@ class APTController:
                 self.logger.error(f"Error loading APT sections: {e}")
             return {}
     
+    def get_upgradable_packages(self) -> List[dict]:
+        """Get list of packages with available updates"""
+        self.log("Checking for package updates")
+        try:
+            import apt
+            cache = apt.Cache()
+            cache.open()
+            cache.upgrade()
+            
+            updates = []
+            for package in cache.get_changes():
+                if package.marked_upgrade or package.marked_install:
+                    update_info = {
+                        'name': package.name,
+                        'description': package.candidate.summary if package.candidate else '',
+                        'current_version': package.installed.version if package.installed else 'Not installed',
+                        'new_version': package.candidate.version if package.candidate else 'Unknown',
+                        'is_security': self._is_security_update(package)
+                    }
+                    updates.append(update_info)
+            
+            self.log(f"Found {len(updates)} available updates")
+            return updates
+        except ImportError:
+            self.log("APT library not available")
+            return []
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error checking for updates: {e}")
+            return []
+    
+    def _is_security_update(self, package) -> bool:
+        """Check if package update is a security update"""
+        try:
+            if not package.candidate:
+                return False
+            
+            # Check if update comes from security repository
+            for origin in package.candidate.origins:
+                if 'security' in origin.archive.lower() or 'security' in origin.label.lower():
+                    return True
+            
+            return False
+        except Exception:
+            return False
+    
     def get_all_packages_for_cache(self) -> List:
         """Get all package details for caching"""
         self.log("Loading all APT packages for cache")
