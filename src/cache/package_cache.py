@@ -65,7 +65,7 @@ class PackageCache:
         if self.logger:
             self.logger.debug(f"Clearing package cache for {backend or 'all backends'}")
         
-        with self.conn_mgr.connection() as conn:
+        with self.conn_mgr.transaction('IMMEDIATE') as conn:
             if backend:
                 cursor = conn.execute('DELETE FROM package_cache WHERE backend = ?', (backend,))
                 count = cursor.rowcount

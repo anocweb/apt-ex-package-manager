@@ -738,12 +738,9 @@ class MainView(QMainWindow):
                             self.logging_service.info(f"Loaded {total} packages")
                             self.progress_signal.emit(f"Caching {total} packages")
                             
-                            # Clear existing packages first
-                            self.logging_service.info("Clearing old cache")
-                            self.cache_manager.package_cache.clear_cache('apt')
-                            self.logging_service.info("Starting batch inserts")
+                            self.logging_service.info("Starting batch upserts")
                             
-                            # Process packages in batches with transactions
+                            # Process packages in batches with upserts
                             batch_size = 100
                             from models.package_cache_model import PackageCache as PackageCacheData
                             
@@ -751,17 +748,29 @@ class MainView(QMainWindow):
                                 batch_end = min(batch_start + batch_size, total)
                                 batch = packages[batch_start:batch_end]
                                 
-                                # Use transaction for batch insert
+                                # Use transaction for batch upsert
                                 try:
                                     self.logging_service.debug(f"Batch {batch_start}-{batch_end} starting")
                                     with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
                                         for pkg_data in batch:
-                                            # Direct insert without nested transaction
+                                            # Upsert: insert or replace
                                             cursor = conn.execute('''
                                                 INSERT INTO package_cache 
                                                 (backend, package_id, name, version, description, summary, section, 
                                                  architecture, size, installed_size, maintainer, homepage)
                                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                ON CONFLICT(backend, package_id) DO UPDATE SET
+                                                    name=excluded.name,
+                                                    version=excluded.version,
+                                                    description=excluded.description,
+                                                    summary=excluded.summary,
+                                                    section=excluded.section,
+                                                    architecture=excluded.architecture,
+                                                    size=excluded.size,
+                                                    installed_size=excluded.installed_size,
+                                                    maintainer=excluded.maintainer,
+                                                    homepage=excluded.homepage,
+                                                    last_updated=CURRENT_TIMESTAMP
                                             ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
                                                   pkg_data.get('version'), pkg_data.get('description'),
                                                   pkg_data.get('summary'), pkg_data.get('section'),
@@ -777,6 +786,18 @@ class MainView(QMainWindow):
                                 self.count_signal.emit(batch_end, total)
                         
                         self.logging_service.info("All batches complete")
+                        
+                        # Delete stale packages not updated in this refresh
+                        self.logging_service.info("Removing stale packages")
+                        max_age_minutes = min(10, 24 * 60)  # 10 min or cache TTL, whichever is smaller
+                        with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
+                            cursor = conn.execute('''
+                                DELETE FROM package_cache 
+                                WHERE backend = ? 
+                                AND datetime(last_updated) < datetime('now', ? || ' minutes')
+                            ''', ('apt', f'-{max_age_minutes}'))
+                            deleted = cursor.rowcount
+                            self.logging_service.info(f"Removed {deleted} stale packages")
                         
                         # Update section counts after all packages cached (outside transaction)
                         self.logging_service.info("Updating section counts")
