@@ -56,6 +56,9 @@ env/
 .DS_Store
 Thumbs.db
 
+# Profiling
+*.austin
+
 # Application specific
 *.db
 *.log
