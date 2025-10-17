@@ -20,7 +20,7 @@ class CategoryModel:
     
     def create(self, category: Category) -> int:
         """Create a new category"""
-        with self.conn_mgr.connection() as conn:
+        with self.conn_mgr.transaction('IMMEDIATE') as conn:
             cursor = conn.execute('''
                 INSERT INTO category_cache (backend, name, parent_id, package_count)
                 VALUES (?, ?, ?, ?)

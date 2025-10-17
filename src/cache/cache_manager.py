@@ -5,6 +5,7 @@ class CacheManager:
     """Centralized cache management with expiration handling"""
     
     def __init__(self, connection_manager, logging_service=None):
+        self.connection_manager = connection_manager
         self.logging_service = logging_service
         self.logger = logging_service.get_logger('cache.manager') if logging_service else None
         self.category_cache = CategoryCache(connection_manager, logging_service)

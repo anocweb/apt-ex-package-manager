@@ -723,21 +723,25 @@ class MainView(QMainWindow):
                         
                         # Update categories if needed
                         if self.update_categories:
+                            self.logging_service.info("Starting category update")
                             categories = apt_controller.get_section_details()
                             self.cache_manager.set_categories('apt', categories)
                             self.logging_service.info("Category cache updated")
                         
                         # Update packages if needed
                         if self.update_packages:
+                            self.logging_service.info("Starting package update")
                             self.progress_signal.emit("Loading package details")
                             packages = apt_controller.get_all_packages_for_cache()
                             
                             total = len(packages)
+                            self.logging_service.info(f"Loaded {total} packages")
                             self.progress_signal.emit(f"Caching {total} packages")
                             
                             # Clear existing packages first
+                            self.logging_service.info("Clearing old cache")
                             self.cache_manager.package_cache.clear_cache('apt')
-                            self.logging_service.info("Starting package cache update")
+                            self.logging_service.info("Starting batch inserts")
                             
                             # Process packages in batches with transactions
                             batch_size = 100
@@ -748,31 +752,44 @@ class MainView(QMainWindow):
                                 batch = packages[batch_start:batch_end]
                                 
                                 # Use transaction for batch insert
-                                with self.cache_manager.connection_manager.transaction() as conn:
-                                    for pkg_data in batch:
-                                        # Direct insert without nested transaction
-                                        cursor = conn.execute('''
-                                            INSERT INTO package_cache 
-                                            (backend, package_id, name, version, description, summary, section, 
-                                             architecture, size, installed_size, maintainer, homepage)
-                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                        ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
-                                              pkg_data.get('version'), pkg_data.get('description'),
-                                              pkg_data.get('summary'), pkg_data.get('section'),
-                                              pkg_data.get('architecture'), pkg_data.get('size'),
-                                              pkg_data.get('installed_size'), pkg_data.get('maintainer'),
-                                              pkg_data.get('homepage')))
+                                try:
+                                    self.logging_service.debug(f"Batch {batch_start}-{batch_end} starting")
+                                    with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
+                                        for pkg_data in batch:
+                                            # Direct insert without nested transaction
+                                            cursor = conn.execute('''
+                                                INSERT INTO package_cache 
+                                                (backend, package_id, name, version, description, summary, section, 
+                                                 architecture, size, installed_size, maintainer, homepage)
+                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
+                                                  pkg_data.get('version'), pkg_data.get('description'),
+                                                  pkg_data.get('summary'), pkg_data.get('section'),
+                                                  pkg_data.get('architecture'), pkg_data.get('size'),
+                                                  pkg_data.get('installed_size'), pkg_data.get('maintainer'),
+                                                  pkg_data.get('homepage')))
+                                    self.logging_service.debug(f"Batch {batch_start}-{batch_end} committed")
+                                except Exception as batch_err:
+                                    self.logging_service.error(f"Batch {batch_start}-{batch_end} failed: {batch_err}")
+                                    raise
                                 
                                 # Update progress after each batch
                                 self.count_signal.emit(batch_end, total)
-                            
-                            # Update section counts after all packages cached
-                            self.progress_signal.emit("Updating section counts")
-                            self.cache_manager.package_cache.model.update_section_counts('apt')
+                        
+                        self.logging_service.info("All batches complete")
+                        
+                        # Update section counts after all packages cached (outside transaction)
+                        self.logging_service.info("Updating section counts")
+                        self.progress_signal.emit("Updating section counts")
+                        self.cache_manager.package_cache.model.update_section_counts('apt')
+                        self.logging_service.info("Section counts updated")
                         
                         self.finished_signal.emit()
                         
                     except Exception as e:
+                        self.logging_service.error(f"Worker failed: {e}")
+                        import traceback
+                        self.logging_service.error(traceback.format_exc())
                         self.error_signal.emit(str(e))
             
             # Create and start worker
