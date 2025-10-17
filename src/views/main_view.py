@@ -712,29 +712,36 @@ class MainView(QMainWindow):
                             self.cache_manager.package_cache.clear_cache('apt')
                             self.logging_service.info("Starting package cache update")
                             
-                            # Process packages with progress updates
-                            for i, pkg_data in enumerate(packages):
-                                from models.package_cache_model import PackageCache as PackageCacheData
-                                package = PackageCacheData(
-                                    backend=pkg_data['backend'],
-                                    package_id=pkg_data['package_id'],
-                                    name=pkg_data['name'],
-                                    version=pkg_data.get('version'),
-                                    description=pkg_data.get('description'),
-                                    summary=pkg_data.get('summary'),
-                                    section=pkg_data.get('section'),
-                                    architecture=pkg_data.get('architecture'),
-                                    size=pkg_data.get('size'),
-                                    installed_size=pkg_data.get('installed_size'),
-                                    maintainer=pkg_data.get('maintainer'),
-                                    homepage=pkg_data.get('homepage'),
-                                    metadata=pkg_data.get('metadata', {})
-                                )
-                                self.cache_manager.package_cache.model.create(package)
+                            # Process packages in batches with transactions
+                            batch_size = 100
+                            from models.package_cache_model import PackageCache as PackageCacheData
+                            
+                            for batch_start in range(0, total, batch_size):
+                                batch_end = min(batch_start + batch_size, total)
+                                batch = packages[batch_start:batch_end]
                                 
-                                # Update progress every 100 packages
-                                if (i + 1) % 100 == 0 or i == total - 1:
-                                    self.count_signal.emit(i + 1, total)
+                                # Use transaction for batch insert
+                                with self.cache_manager.connection_manager.transaction():
+                                    for pkg_data in batch:
+                                        package = PackageCacheData(
+                                            backend=pkg_data['backend'],
+                                            package_id=pkg_data['package_id'],
+                                            name=pkg_data['name'],
+                                            version=pkg_data.get('version'),
+                                            description=pkg_data.get('description'),
+                                            summary=pkg_data.get('summary'),
+                                            section=pkg_data.get('section'),
+                                            architecture=pkg_data.get('architecture'),
+                                            size=pkg_data.get('size'),
+                                            installed_size=pkg_data.get('installed_size'),
+                                            maintainer=pkg_data.get('maintainer'),
+                                            homepage=pkg_data.get('homepage'),
+                                            metadata=pkg_data.get('metadata', {})
+                                        )
+                                        self.cache_manager.package_cache.model.create(package)
+                                
+                                # Update progress after each batch
+                                self.count_signal.emit(batch_end, total)
                         
                         self.finished_signal.emit()
                         
