@@ -64,49 +64,18 @@ class PackageListItem(QFrame):
         package_name = getattr(self.package, 'name', '')
         self.installButton.clicked.connect(lambda: self.install_requested.emit(package_name))
         
-        # Apply styling
+        # Apply dev outline if active
         if dev_outline:
-            self.iconLabel.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px; border: 1px solid red;")
-            self.nameLabel.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
-            self.descLabel.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 0px;")
-            self.ratingLabel.setStyleSheet("font-size: 11px; background: transparent; border: 1px solid red; padding: 0px;")
-            self.backendLabel.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: 1px solid red; padding: 2px;")
-            self.installButton.setStyleSheet("""
-                QPushButton {
-                    background-color: palette(highlight);
-                    color: palette(highlighted-text);
-                    border: 1px solid red;
-                    border-radius: 6px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: palette(dark);
-                }
-            """)
-        else:
-            self.iconLabel.setStyleSheet("font-size: 24px; background-color: palette(button); border-radius: 8px;")
-            self.nameLabel.setStyleSheet("font-size: 20px; font-weight: bold; color: palette(window-text); background: transparent; border: none; padding: 0px;")
-            self.descLabel.setStyleSheet("font-size: 12px; color: palette(window-text); background: transparent; border: none; padding: 0px;")
-            self.ratingLabel.setStyleSheet("font-size: 11px; background: transparent; border: none; padding: 0px;")
-            self.backendLabel.setStyleSheet("font-size: 10px; color: palette(window-text); background: transparent; border: none; padding: 2px;")
-            self.installButton.setStyleSheet("""
-                QPushButton {
-                    background-color: palette(highlight);
-                    color: palette(highlighted-text);
-                    border: none;
-                    border-radius: 6px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: palette(dark);
-                }
-            """)
+            self.iconLabel.setStyleSheet(self.iconLabel.styleSheet() + "; border: 1px solid red;")
+            self.nameLabel.setStyleSheet(self.nameLabel.styleSheet() + "; border: 1px solid red;")
+            self.descLabel.setStyleSheet(self.descLabel.styleSheet() + "; border: 1px solid red;")
+            self.ratingLabel.setStyleSheet(self.ratingLabel.styleSheet() + "; border: 1px solid red;")
+            self.backendLabel.setStyleSheet(self.backendLabel.styleSheet() + "; border: 1px solid red;")
+            self.installButton.setStyleSheet(self.installButton.styleSheet().replace("border: none;", "border: 1px solid red;"))
         
         # Set transparent for mouse events
-        self.nameLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.descLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.ratingLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.backendLabel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        for label in [self.nameLabel, self.descLabel, self.ratingLabel, self.backendLabel]:
+            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         
         # Update rating display
         if not dev_outline:

@@ -229,7 +229,13 @@ class PackageCacheModel:
             if not sections:
                 # All packages
                 base_query = '''
-                    SELECT p.name, COALESCE(p.description, p.summary, '') as description, p.backend
+                    SELECT p.name, 
+                           CASE 
+                               WHEN LENGTH(COALESCE(p.description, p.summary, '')) > 100 
+                               THEN SUBSTR(COALESCE(p.description, p.summary, ''), 1, 100) || '...'
+                               ELSE COALESCE(p.description, p.summary, '')
+                           END as description, 
+                           p.backend
                     FROM package_cache p
                     WHERE p.backend = ?
                     ORDER BY p.name
@@ -239,7 +245,13 @@ class PackageCacheModel:
                 # Specific sections
                 placeholders = ','.join('?' * len(sections))
                 base_query = f'''
-                    SELECT p.name, COALESCE(p.description, p.summary, '') as description, p.backend
+                    SELECT p.name, 
+                           CASE 
+                               WHEN LENGTH(COALESCE(p.description, p.summary, '')) > 100 
+                               THEN SUBSTR(COALESCE(p.description, p.summary, ''), 1, 100) || '...'
+                               ELSE COALESCE(p.description, p.summary, '')
+                           END as description, 
+                           p.backend
                     FROM package_cache p
                     WHERE p.backend = ? AND p.section IN ({placeholders})
                     ORDER BY p.name
@@ -249,11 +261,8 @@ class PackageCacheModel:
             if include_rating:
                 # Join with ratings
                 query = base_query.replace(
-                    'SELECT p.name, COALESCE(p.description, p.summary, \'\') as description, p.backend',
-                    'SELECT p.name, COALESCE(p.description, p.summary, \'\') as description, p.backend, r.rating, r.review_count'
-                ).replace(
-                    'FROM package_cache p',
-                    'FROM package_cache p LEFT JOIN rating_cache r ON p.name = r.app_id'
+                    'p.backend\n                    FROM package_cache p',
+                    'p.backend, r.rating, r.review_count\n                    FROM package_cache p LEFT JOIN rating_cache r ON p.name = r.app_id'
                 )
             else:
                 query = base_query

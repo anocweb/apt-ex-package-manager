@@ -52,6 +52,7 @@ class MainView(QMainWindow):
             self.logging_service.enable_file_logging(log_dir)
         
         uic.loadUi('src/ui/main_window.ui', self)
+        self.setMinimumSize(1150, 700)
         self.logging_service.debug("Main window UI loaded from file")
         
         # Add log icon to status bar
@@ -681,10 +682,12 @@ class MainView(QMainWindow):
                 progress_signal = pyqtSignal(str)
                 count_signal = pyqtSignal(int, int)  # processed, total
                 
-                def __init__(self, update_categories, update_packages):
+                def __init__(self, update_categories, update_packages, logging_service, cache_manager):
                     super().__init__()
                     self.update_categories = update_categories
                     self.update_packages = update_packages
+                    self.logging_service = logging_service
+                    self.cache_manager = cache_manager
                 
                 def run(self):
                     try:
@@ -739,7 +742,7 @@ class MainView(QMainWindow):
                         self.error_signal.emit(str(e))
             
             # Create and start worker
-            self.cache_worker = CacheUpdateWorker(update_categories, update_packages)
+            self.cache_worker = CacheUpdateWorker(update_categories, update_packages, self.logging_service, self.cache_manager)
             self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
             self.cache_worker.error_signal.connect(self.on_cache_update_error)
             self.cache_worker.progress_signal.connect(self.update_status_message)

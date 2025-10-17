@@ -24,8 +24,8 @@
     <widget class="QLabel" name="iconLabel">
      <property name="minimumSize">
       <size>
-       <width>48</width>
-       <height>48</height>
+       <width>64</width>
+       <height>64</height>
       </size>
      </property>
      <property name="maximumSize">
@@ -34,12 +34,21 @@
        <height>64</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: palette(button); border-radius: 8px;</string>
+     </property>
      <property name="text">
       <string>📦</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
+
     </widget>
    </item>
    <item>
@@ -59,37 +68,49 @@
      <property name="bottomMargin">
       <number>2</number>
      </property>
-     <item>
+     <item alignment="Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop">
       <widget class="QLabel" name="nameLabel">
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>24</height>
+         <height>30</height>
         </size>
        </property>
        <property name="font">
         <font>
-         <pointsize>20</pointsize>
+         <pointsize>18</pointsize>
+         <bold>true</bold>
         </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: palette(window-text); background: transparent; border: none; padding: 0px;</string>
        </property>
        <property name="text">
         <string>Package Name</string>
        </property>
       </widget>
      </item>
-     <item>
+     <item alignment="Qt::AlignmentFlag::AlignTop">
       <widget class="QLabel" name="descLabel">
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>36</height>
+         <height>30</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
          <width>16777215</width>
-         <height>36</height>
+         <height>30</height>
         </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: palette(window-text); background: transparent; border: none; padding: 0px;</string>
        </property>
        <property name="text">
         <string>Package description text that may wrap to multiple lines</string>
@@ -102,13 +123,21 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item alignment="Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignBottom">
       <widget class="QLabel" name="ratingLabel">
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>20</height>
+         <height>30</height>
         </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background: transparent; border: none; padding: 0px;</string>
        </property>
        <property name="text">
         <string>★★★★☆ 4.2 (123 reviews)</string>
@@ -127,6 +156,14 @@
      </property>
      <item>
       <widget class="QLabel" name="backendLabel">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: palette(window-text); background: transparent; border: none; padding: 2px;</string>
+       </property>
        <property name="text">
         <string>APT</string>
        </property>
@@ -161,6 +198,22 @@
          <width>80</width>
          <height>32</height>
         </size>
+       </property>
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+    border: none;
+    border-radius: 6px;
+}
+QPushButton:hover {
+    background-color: palette(dark);
+}</string>
        </property>
        <property name="text">
         <string>⬇ Install</string>
