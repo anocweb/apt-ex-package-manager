@@ -721,24 +721,20 @@ class MainView(QMainWindow):
                                 batch = packages[batch_start:batch_end]
                                 
                                 # Use transaction for batch insert
-                                with self.cache_manager.connection_manager.transaction():
+                                with self.cache_manager.connection_manager.transaction() as conn:
                                     for pkg_data in batch:
-                                        package = PackageCacheData(
-                                            backend=pkg_data['backend'],
-                                            package_id=pkg_data['package_id'],
-                                            name=pkg_data['name'],
-                                            version=pkg_data.get('version'),
-                                            description=pkg_data.get('description'),
-                                            summary=pkg_data.get('summary'),
-                                            section=pkg_data.get('section'),
-                                            architecture=pkg_data.get('architecture'),
-                                            size=pkg_data.get('size'),
-                                            installed_size=pkg_data.get('installed_size'),
-                                            maintainer=pkg_data.get('maintainer'),
-                                            homepage=pkg_data.get('homepage'),
-                                            metadata=pkg_data.get('metadata', {})
-                                        )
-                                        self.cache_manager.package_cache.model.create(package)
+                                        # Direct insert without nested transaction
+                                        cursor = conn.execute('''
+                                            INSERT INTO package_cache 
+                                            (backend, package_id, name, version, description, summary, section, 
+                                             architecture, size, installed_size, maintainer, homepage)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
+                                              pkg_data.get('version'), pkg_data.get('description'),
+                                              pkg_data.get('summary'), pkg_data.get('section'),
+                                              pkg_data.get('architecture'), pkg_data.get('size'),
+                                              pkg_data.get('installed_size'), pkg_data.get('maintainer'),
+                                              pkg_data.get('homepage')))
                                 
                                 # Update progress after each batch
                                 self.count_signal.emit(batch_end, total)
