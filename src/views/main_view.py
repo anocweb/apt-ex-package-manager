@@ -36,9 +36,10 @@ class MainView(QMainWindow):
         # Get named logger for UI operations
         self.logger = self.logging_service.get_logger('ui')
         
-        # Pre-register ODRS and rating cache loggers
+        # Pre-register loggers
         self.logging_service.get_logger('odrs')
         self.logging_service.get_logger('rating_cache')
+        self.logging_service.get_logger('db.connection')
         
         # Enable debug logging if requested
         if dev_logging:
