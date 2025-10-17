@@ -606,8 +606,16 @@ class MainView(QMainWindow):
     
 
     
+    def update_db_stats(self):
+        """Update database connection stats in status bar"""
+        active = self.connection_manager.get_active_connections()
+        total = self.connection_manager.pool_size
+        self.db_stats_label.setText(f"DB: [{active}/{total}]")
+    
     def closeEvent(self, event):
         """Handle application close"""
+        if hasattr(self, 'stats_timer'):
+            self.stats_timer.stop()
         event.accept()
         
         # Exit the entire application after accepting the event
@@ -806,10 +814,22 @@ class MainView(QMainWindow):
         self.status_base_message = f"Cached {processed}/{total} packages"
     
     def setup_status_bar_log_icon(self):
-        """Add log icon to the right side of status bar"""
-        from PyQt6.QtWidgets import QPushButton
-        from PyQt6.QtCore import QSize
+        """Add log icon and stats to the right side of status bar"""
+        from PyQt6.QtWidgets import QPushButton, QLabel
+        from PyQt6.QtCore import QSize, QTimer
         
+        # DB stats label
+        self.db_stats_label = QLabel()
+        self.db_stats_label.setStyleSheet("padding: 0 10px; font-size: 11px;")
+        self.statusbar.addPermanentWidget(self.db_stats_label)
+        
+        # Update stats every second
+        self.stats_timer = QTimer()
+        self.stats_timer.timeout.connect(self.update_db_stats)
+        self.stats_timer.start(1000)
+        self.update_db_stats()
+        
+        # Log button
         self.log_button = QPushButton("📋")
         self.log_button.setFixedSize(QSize(30, 20))
         self.log_button.setToolTip("View application logs")

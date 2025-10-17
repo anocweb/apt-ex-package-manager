@@ -110,6 +110,10 @@ class SQLiteConnectionManager:
         finally:
             self.return_connection(conn)
     
+    def get_active_connections(self) -> int:
+        """Get number of active connections (not in pool)"""
+        return self.pool_size - self._pool.qsize()
+    
     def close_all(self):
         """Close all pooled connections"""
         self._closed = True
