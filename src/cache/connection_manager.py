@@ -88,10 +88,8 @@ class SQLiteConnectionManager:
         old_isolation = conn.isolation_level
         
         try:
-            if isolation_level is not None:
-                conn.isolation_level = isolation_level
-            
-            conn.execute('BEGIN')
+            # Set isolation level to enable transactions
+            conn.isolation_level = isolation_level if isolation_level else 'DEFERRED'
             yield conn
             conn.commit()
         except Exception:
