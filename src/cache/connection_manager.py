@@ -7,7 +7,7 @@ from typing import Optional
 class SQLiteConnectionManager:
     """Thread-safe SQLite connection manager with pooling"""
     
-    def __init__(self, db_path: str, pool_size: int = 3, logging_service=None):
+    def __init__(self, db_path: str, pool_size: int = 5, logging_service=None):
         self.db_path = db_path
         self.pool_size = pool_size
         self._pool = queue.Queue(maxsize=pool_size)
@@ -33,7 +33,7 @@ class SQLiteConnectionManager:
     
     def _create_connection(self) -> sqlite3.Connection:
         """Create optimized SQLite connection"""
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=30.0)
         
         # Optimize SQLite settings
         conn.execute('PRAGMA journal_mode=WAL')
@@ -41,6 +41,7 @@ class SQLiteConnectionManager:
         conn.execute('PRAGMA cache_size=10000')
         conn.execute('PRAGMA foreign_keys=ON')
         conn.execute('PRAGMA temp_store=MEMORY')
+        conn.execute('PRAGMA busy_timeout=30000')
         
         return conn
     
