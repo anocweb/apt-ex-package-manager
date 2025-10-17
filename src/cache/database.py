@@ -70,6 +70,17 @@ class DatabaseManager:
                 )
             ''')
             
+            # Section counts cache table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS section_counts (
+                    backend TEXT(20) NOT NULL,
+                    section TEXT(50) NOT NULL,
+                    count INTEGER DEFAULT 0,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (backend, section)
+                )
+            ''')
+            
             # Create performance indexes
             self._create_indexes(conn)
             conn.commit()
@@ -88,10 +99,14 @@ class DatabaseManager:
             'CREATE INDEX IF NOT EXISTS idx_package_section ON package_cache(section)',
             'CREATE INDEX IF NOT EXISTS idx_package_updated ON package_cache(last_updated)',
             'CREATE INDEX IF NOT EXISTS idx_package_search ON package_cache(name, description)',
+            'CREATE INDEX IF NOT EXISTS idx_package_backend_updated ON package_cache(backend, last_updated)',
             
             # Metadata indexes
             'CREATE INDEX IF NOT EXISTS idx_metadata_package ON package_metadata(package_cache_id)',
             'CREATE INDEX IF NOT EXISTS idx_metadata_key ON package_metadata(key)',
+            
+            # Section counts indexes
+            'CREATE INDEX IF NOT EXISTS idx_section_counts_backend ON section_counts(backend)',
         ]
         
         for index_sql in indexes:

@@ -278,6 +278,54 @@ class PackageCacheModel:
             
             return summaries
     
+    def count_by_section(self, backend: str, section: str) -> int:
+        """Count packages by section/category"""
+        with self.conn_mgr.connection() as conn:
+            cursor = conn.execute('''
+                SELECT COUNT(*) FROM package_cache 
+                WHERE backend = ? AND section = ?
+            ''', (backend, section))
+            return cursor.fetchone()[0]
+    
+    def get_counts_by_sections(self, backend: str, sections: List[str]) -> Dict[str, int]:
+        """Get package counts for multiple sections from cache"""
+        if not sections:
+            return {}
+        
+        with self.conn_mgr.connection() as conn:
+            # Check if section_counts is populated
+            cursor = conn.execute('SELECT COUNT(*) FROM section_counts WHERE backend = ?', (backend,))
+            if cursor.fetchone()[0] == 0:
+                # Fallback: compute and cache counts
+                self.update_section_counts(backend)
+            
+            placeholders = ','.join('?' * len(sections))
+            cursor = conn.execute(f'''
+                SELECT section, count 
+                FROM section_counts 
+                WHERE backend = ? AND section IN ({placeholders})
+            ''', [backend] + sections)
+            
+            return dict(cursor.fetchall())
+    
+    def update_section_counts(self, backend: str):
+        """Update precomputed section counts"""
+        with self.conn_mgr.transaction() as conn:
+            # Delete old counts
+            conn.execute('DELETE FROM section_counts WHERE backend = ?', (backend,))
+            
+            # Insert new counts
+            conn.execute('''
+                INSERT INTO section_counts (backend, section, count)
+                SELECT backend, section, COUNT(*)
+                FROM package_cache
+                WHERE backend = ?
+                GROUP BY backend, section
+            ''', (backend,))
+            
+            # Update statistics for query optimizer
+            conn.execute('ANALYZE section_counts')
+    
     def get_by_section(self, backend: str, section: str) -> List[PackageCache]:
         """Get packages by section/category"""
         with self.conn_mgr.connection() as conn:

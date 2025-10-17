@@ -765,6 +765,10 @@ class MainView(QMainWindow):
                                 
                                 # Update progress after each batch
                                 self.count_signal.emit(batch_end, total)
+                            
+                            # Update section counts after all packages cached
+                            self.progress_signal.emit("Updating section counts")
+                            self.cache_manager.package_cache.model.update_section_counts('apt')
                         
                         self.finished_signal.emit()
                         
@@ -1002,13 +1006,17 @@ class MainView(QMainWindow):
             'accessibility': (self.accessibilityBtn, '♿ Accessibility')
         }
         
+        # Get all unique sections
+        all_sections = set()
+        for sections in mapping.values():
+            all_sections.update(sections)
+        
+        # Fetch all counts in one query
+        section_counts = self.cache_manager.package_cache.model.get_counts_by_sections('apt', list(all_sections))
+        
         for category, (button, icon_text) in category_buttons.items():
             sections = mapping.get(category, [])
-            count = 0
-            
-            for section in sections:
-                section_packages = self.cache_manager.package_cache.model.get_by_section('apt', section) or []
-                count += len(section_packages)
+            count = sum(section_counts.get(section, 0) for section in sections)
             
             button.setText(f"{icon_text} ({count})")
             button.setEnabled(count > 0)

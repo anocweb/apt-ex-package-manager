@@ -81,8 +81,8 @@ class PackageCache:
             cursor = conn.execute('''
                 SELECT 1 FROM package_cache 
                 WHERE backend = ? 
-                AND datetime(last_updated) > datetime('now', '-{} hours')
+                AND last_updated > datetime('now', ? || ' hours')
                 LIMIT 1
-            '''.format(max_age_hours), (backend,))
+            ''', (backend, f'-{max_age_hours}'))
             
             return cursor.fetchone() is not None
