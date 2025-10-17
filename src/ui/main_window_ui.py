@@ -161,7 +161,7 @@ class Ui_MainWindow(object):
         self.sidebarScrollArea.setStyleSheet(_translate("MainWindow", "QScrollArea { border: none; background-color: transparent; }"))
         self.homeBtn.setText(_translate("MainWindow", "🏠 Home"))
         self.installedBtn.setText(_translate("MainWindow", "📦 Installed"))
-        self.updatesBtn.setText(_translate("MainWindow", "🔄 Updates (1)"))
+        self.updatesBtn.setText(_translate("MainWindow", "⬆️ Updates"))
         self.settingsBtn.setText(_translate("MainWindow", "⚙️ Settings"))
         self.aboutBtn.setText(_translate("MainWindow", "ℹ️ About"))
         self.separator1.setStyleSheet(_translate("MainWindow", "background-color: #555; margin: 8px 16px; min-height: 1px;"))

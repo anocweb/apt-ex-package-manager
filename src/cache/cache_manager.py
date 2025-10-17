@@ -27,7 +27,42 @@ class CacheManager:
     
     def needs_package_update(self, backend: str) -> bool:
         """Check if package cache needs update"""
-        return not self.package_cache.is_cache_valid(backend)
+        # Check if cache is expired
+        if not self.package_cache.is_cache_valid(backend):
+            return True
+        
+        # Check if cache has reasonable number of packages (incomplete cache detection)
+        try:
+            with self.connection_manager.connection() as conn:
+                cursor = conn.execute(
+                    'SELECT COUNT(*) FROM package_cache WHERE backend = ?',
+                    (backend,)
+                )
+                count = cursor.fetchone()[0]
+                # APT typically has 50,000+ packages, if less than 1000, likely incomplete
+                if backend == 'apt' and count < 1000:
+                    if self.logger:
+                        self.logger.warning(f"Cache has only {count} packages, triggering refresh")
+                    return True
+        except Exception:
+            return True
+        
+        return False
+    
+    def needs_installed_update(self, backend: str) -> bool:
+        """Check if installed status needs update"""
+        # Check if any packages are marked as installed
+        try:
+            with self.connection_manager.connection() as conn:
+                cursor = conn.execute(
+                    'SELECT COUNT(*) FROM package_cache WHERE backend = ? AND is_installed = 1',
+                    (backend,)
+                )
+                count = cursor.fetchone()[0]
+                # If no packages marked as installed, needs update
+                return count == 0
+        except Exception:
+            return True
     
     def get_categories(self, backend: str):
         """Get categories from cache"""

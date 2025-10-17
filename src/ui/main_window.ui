@@ -120,7 +120,7 @@ QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</strin
        <item>
         <widget class="QPushButton" name="updatesBtn">
          <property name="text">
-          <string>🔄 Updates (1)</string>
+          <string>⬆️ Updates</string>
          </property>
         </widget>
        </item>

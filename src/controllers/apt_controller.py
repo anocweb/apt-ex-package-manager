@@ -44,6 +44,52 @@ class APTController:
             Package("git", "2.34", "Version control")
         ]
     
+    def get_installed_packages_list(self, connection_manager, limit: int = None, offset: int = 0) -> List[dict]:
+        """Get list of installed packages with minimal info for display"""
+        try:
+            from models.package_cache_model import PackageCacheModel
+            model = PackageCacheModel(connection_manager)
+            return model.get_installed_packages('apt', limit, offset)
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error loading installed packages: {e}")
+            return []
+    
+    def update_installed_status(self, connection_manager):
+        """Update is_installed flag for all packages in cache"""
+        self.log("Updating installed package status")
+        try:
+            import apt
+            cache = apt.Cache()
+            
+            # Get list of installed package names
+            installed_names = set()
+            for package in cache:
+                if package.is_installed:
+                    installed_names.add(package.name)
+            
+            self.log(f"Found {len(installed_names)} installed packages")
+            
+            # Update database
+            with connection_manager.transaction() as conn:
+                # Reset all to not installed
+                conn.execute('UPDATE package_cache SET is_installed = 0 WHERE backend = ?', ('apt',))
+                
+                # Mark installed packages
+                if installed_names:
+                    placeholders = ','.join('?' * len(installed_names))
+                    conn.execute(
+                        f'UPDATE package_cache SET is_installed = 1 WHERE backend = ? AND name IN ({placeholders})',
+                        ['apt'] + list(installed_names)
+                    )
+            
+            self.log("Installed status updated")
+            return True
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error updating installed status: {e}")
+            return False
+    
     def get_categories_from_sections(self) -> List[str]:
         """Collect categories from APT sections"""
         try:

@@ -315,8 +315,8 @@ class MainView(QMainWindow):
             self.update_package_display()
             self.statusbar.showMessage("Home - Featured applications", 2000)
         elif page_key == 'installed':
-            self.current_packages = self.package_manager.get_installed_packages()
-            self.update_installed_display()
+            self.statusbar.showMessage("Loading installed packages...")
+            self.load_installed_packages()
             self.statusbar.showMessage("Showing installed packages", 2000)
         elif page_key == 'updates':
             self.setup_updates_context_actions()
@@ -380,21 +380,169 @@ class MainView(QMainWindow):
             self.selected_button.style().unpolish(self.selected_button)
             self.selected_button.style().polish(self.selected_button)
     
-    def update_installed_display(self):
-        layout = self.content_layouts['installed']
-        # Clear existing widgets
-        for i in reversed(range(layout.count())):
-            layout.itemAt(i).widget().setParent(None)
+    def load_installed_packages(self):
+        """Load installed packages with virtual scrolling"""
+        from PyQt6.QtCore import QThread, pyqtSignal
         
-        # Add package cards
-        row, col = 0, 0
-        for package in self.current_packages[:20]:
-            card = self.create_package_card(package)
-            layout.addWidget(card, row, col)
-            col += 1
-            if col >= 3:
-                col = 0
-                row += 1
+        installed_panel = self.panels['installed']
+        scroll_widget = installed_panel.installedScrollArea.widget()
+        
+        # Get or create layout
+        if not scroll_widget.layout():
+            from PyQt6.QtWidgets import QVBoxLayout
+            layout = QVBoxLayout(scroll_widget)
+            layout.setSpacing(0)
+            layout.setContentsMargins(0, 0, 0, 0)
+        
+        container_layout = scroll_widget.layout()
+        
+        # Clear existing items
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Create worker thread for initial batch
+        class InstalledPackagesWorker(QThread):
+            initial_batch_signal = pyqtSignal(list)
+            remaining_batch_signal = pyqtSignal(list)
+            error_signal = pyqtSignal(str)
+            
+            def __init__(self, apt_controller, connection_manager):
+                super().__init__()
+                self.apt_controller = apt_controller
+                self.connection_manager = connection_manager
+            
+            def run(self):
+                try:
+                    # Load first 20 packages
+                    initial_packages = self.apt_controller.get_installed_packages_list(
+                        self.connection_manager, limit=20, offset=0
+                    )
+                    self.initial_batch_signal.emit(initial_packages)
+                    
+                    # Load remaining packages in batches
+                    offset = 20
+                    batch_size = 50
+                    while True:
+                        batch = self.apt_controller.get_installed_packages_list(
+                            self.connection_manager, limit=batch_size, offset=offset
+                        )
+                        if not batch:
+                            break
+                        self.remaining_batch_signal.emit(batch)
+                        offset += batch_size
+                except Exception as e:
+                    self.error_signal.emit(str(e))
+        
+        # Create and start worker
+        self.installed_worker = InstalledPackagesWorker(
+            self.package_manager.apt_controller,
+            self.connection_manager
+        )
+        self.installed_worker.initial_batch_signal.connect(self.on_installed_initial_loaded)
+        self.installed_worker.remaining_batch_signal.connect(self.on_installed_remaining_loaded)
+        self.installed_worker.error_signal.connect(self.on_installed_error)
+        self.installed_worker.start()
+    
+    def on_installed_initial_loaded(self, packages):
+        """Handle initial batch of installed packages"""
+        from PyQt6.QtWidgets import QLabel, QSpacerItem, QSizePolicy
+        from widgets.installed_list_item import InstalledListItem
+        
+        installed_panel = self.panels['installed']
+        scroll_widget = installed_panel.installedScrollArea.widget()
+        container_layout = scroll_widget.layout()
+        
+        # Clear loading message
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        if not packages:
+            # No packages installed
+            no_packages_label = QLabel("No packages installed")
+            no_packages_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            no_packages_label.setStyleSheet("font-size: 18px; color: palette(window-text);")
+            
+            top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            container_layout.addItem(top_spacer)
+            container_layout.addWidget(no_packages_label)
+            bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+            container_layout.addItem(bottom_spacer)
+            
+            scroll_widget.updateGeometry()
+            installed_panel.installedScrollArea.updateGeometry()
+        else:
+            # Add initial batch of installed package items
+            for pkg_info in packages:
+                item = InstalledListItem(pkg_info)
+                item.remove_requested.connect(self.remove_package_from_installed)
+                container_layout.addWidget(item)
+            
+            scroll_widget.updateGeometry()
+            installed_panel.installedScrollArea.updateGeometry()
+            
+            self.statusbar.showMessage(f"Showing {len(packages)} installed packages (loading more...)")
+    
+    def on_installed_remaining_loaded(self, packages):
+        """Handle remaining batch of installed packages"""
+        from PyQt6.QtWidgets import QSpacerItem, QSizePolicy
+        from widgets.installed_list_item import InstalledListItem
+        
+        installed_panel = self.panels['installed']
+        scroll_widget = installed_panel.installedScrollArea.widget()
+        container_layout = scroll_widget.layout()
+        
+        # Remove spacer if exists
+        if container_layout.count() > 0:
+            last_item = container_layout.itemAt(container_layout.count() - 1)
+            if last_item.spacerItem():
+                container_layout.removeItem(last_item)
+        
+        # Add remaining packages
+        for pkg_info in packages:
+            item = InstalledListItem(pkg_info)
+            item.remove_requested.connect(self.remove_package_from_installed)
+            container_layout.addWidget(item)
+        
+        # Add spacer at bottom
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        container_layout.addItem(spacer)
+        
+        scroll_widget.updateGeometry()
+        installed_panel.installedScrollArea.updateGeometry()
+        
+        total_count = container_layout.count() - 1  # Subtract spacer
+        self.statusbar.showMessage(f"Showing {total_count} installed packages", 3000)
+    
+    def on_installed_error(self, error_message):
+        """Handle error loading installed packages"""
+        from PyQt6.QtWidgets import QLabel
+        
+        installed_panel = self.panels['installed']
+        scroll_widget = installed_panel.installedScrollArea.widget()
+        container_layout = scroll_widget.layout()
+        
+        # Clear loading message
+        while container_layout.count():
+            item = container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        error_label = QLabel(f"Error loading installed packages: {error_message}")
+        error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        error_label.setStyleSheet("color: #FF6B6B; font-size: 14px;")
+        container_layout.addWidget(error_label)
+        
+        self.statusbar.showMessage("Failed to load installed packages", 5000)
+    
+    def remove_package_from_installed(self, package_name):
+        """Remove a package from installed list"""
+        self.logging_service.info(f"User requested removal: {package_name}")
+        # TODO: Implement actual removal logic
+        self.statusbar.showMessage(f"Removing {package_name}...", 3000)
     
     def clear_category_display(self):
         """Clear category display"""
@@ -733,6 +881,12 @@ class MainView(QMainWindow):
         from PyQt6.QtWidgets import QLabel
         from widgets.update_list_item import UpdateListItem
         
+        # Update sidebar button text
+        if updates:
+            self.updatesBtn.setText(f"⬆️ Updates ({len(updates)})")
+        else:
+            self.updatesBtn.setText("⬆️ Updates")
+        
         updates_panel = self.panels['updates']
         
         # Access the scroll area's widget layout
@@ -916,16 +1070,19 @@ class MainView(QMainWindow):
         # Check what needs updating
         update_categories = self.cache_manager.needs_category_update('apt')
         update_packages = self.cache_manager.needs_package_update('apt')
+        update_installed = self.cache_manager.needs_installed_update('apt')
         
-        if update_categories or update_packages:
+        if update_categories or update_packages or update_installed:
             self.cache_updating = True
             
-            if update_categories and update_packages:
+            if update_categories and update_packages and update_installed:
                 self.start_animated_status("Updating package data")
             elif update_categories:
                 self.start_animated_status("Updating package categories")
-            else:
+            elif update_packages:
                 self.start_animated_status("Updating package cache")
+            else:
+                self.start_animated_status("Updating installed packages")
             
             # Create worker thread for cache update
             class CacheUpdateWorker(QThread):
@@ -934,10 +1091,11 @@ class MainView(QMainWindow):
                 progress_signal = pyqtSignal(str)
                 count_signal = pyqtSignal(int, int)  # processed, total
                 
-                def __init__(self, update_categories, update_packages, logging_service, cache_manager):
+                def __init__(self, update_categories, update_packages, update_installed, logging_service, cache_manager):
                     super().__init__()
                     self.update_categories = update_categories
                     self.update_packages = update_packages
+                    self.update_installed = update_installed
                     self.logging_service = logging_service
                     self.cache_manager = cache_manager
                 
@@ -978,7 +1136,7 @@ class MainView(QMainWindow):
                                     self.logging_service.debug(f"Batch {batch_start}-{batch_end} starting")
                                     with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
                                         for pkg_data in batch:
-                                            # Upsert: insert or replace
+                                            # Upsert: insert or update, preserving is_installed
                                             cursor = conn.execute('''
                                                 INSERT INTO package_cache 
                                                 (backend, package_id, name, version, description, summary, section, 
@@ -996,6 +1154,7 @@ class MainView(QMainWindow):
                                                     maintainer=excluded.maintainer,
                                                     homepage=excluded.homepage,
                                                     last_updated=CURRENT_TIMESTAMP
+                                                WHERE backend = excluded.backend AND package_id = excluded.package_id
                                             ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
                                                   pkg_data.get('version'), pkg_data.get('description'),
                                                   pkg_data.get('summary'), pkg_data.get('section'),
@@ -1019,10 +1178,18 @@ class MainView(QMainWindow):
                         self.logging_service.info(f"Removed {deleted} stale packages")
                         
                         # Update section counts after all packages cached (outside transaction)
-                        self.logging_service.info("Updating section counts")
-                        self.progress_signal.emit("Updating section counts")
-                        self.cache_manager.package_cache.model.update_section_counts('apt')
-                        self.logging_service.info("Section counts updated")
+                        if self.update_packages:
+                            self.logging_service.info("Updating section counts")
+                            self.progress_signal.emit("Updating section counts")
+                            self.cache_manager.package_cache.model.update_section_counts('apt')
+                            self.logging_service.info("Section counts updated")
+                        
+                        # Update installed package status if needed
+                        if self.update_installed or self.update_packages:
+                            self.logging_service.info("Updating installed package status")
+                            self.progress_signal.emit("Updating installed status")
+                            apt_controller.update_installed_status(self.cache_manager.connection_manager)
+                            self.logging_service.info("Installed status updated")
                         
                         self.finished_signal.emit()
                         
@@ -1033,7 +1200,7 @@ class MainView(QMainWindow):
                         self.error_signal.emit(str(e))
             
             # Create and start worker
-            self.cache_worker = CacheUpdateWorker(update_categories, update_packages, self.logging_service, self.cache_manager)
+            self.cache_worker = CacheUpdateWorker(update_categories, update_packages, update_installed, self.logging_service, self.cache_manager)
             self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
             self.cache_worker.error_signal.connect(self.on_cache_update_error)
             self.cache_worker.progress_signal.connect(self.update_status_message)

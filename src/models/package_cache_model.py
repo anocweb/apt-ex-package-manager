@@ -353,6 +353,34 @@ class PackageCacheModel:
             ''', (backend, f'-{max_age_minutes}'))
             return cursor.rowcount
     
+    def get_installed_packages(self, backend: str, limit: int = None, offset: int = 0) -> List[dict]:
+        """Get installed packages with minimal info for display"""
+        with self.conn_mgr.connection() as conn:
+            query = '''
+                SELECT name, version, summary, installed_size
+                FROM package_cache
+                WHERE backend = ? AND is_installed = 1
+                ORDER BY name
+            '''
+            params = [backend]
+            
+            if limit:
+                query += ' LIMIT ? OFFSET ?'
+                params.extend([limit, offset])
+            
+            cursor = conn.execute(query, params)
+            packages = []
+            for row in cursor.fetchall():
+                packages.append({
+                    'name': row[0],
+                    'version': row[1] or 'Unknown',
+                    'description': row[2] or '',
+                    'installed_size': row[3] or 0,
+                    'backend': backend
+                })
+            
+            return packages
+    
     def get_by_section(self, backend: str, section: str) -> List[PackageCache]:
         """Get packages by section/category"""
         with self.conn_mgr.connection() as conn:

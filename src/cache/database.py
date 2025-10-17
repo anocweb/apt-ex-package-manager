@@ -53,10 +53,17 @@ class DatabaseManager:
                     license TEXT(50),
                     source_url TEXT(200),
                     icon_url TEXT(200),
+                    is_installed INTEGER DEFAULT 0,
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(backend, package_id)
                 )
             ''')
+            
+            # Add is_installed column if it doesn't exist (migration)
+            try:
+                conn.execute('ALTER TABLE package_cache ADD COLUMN is_installed INTEGER DEFAULT 0')
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             
             # Package metadata table
             conn.execute('''
@@ -100,6 +107,7 @@ class DatabaseManager:
             'CREATE INDEX IF NOT EXISTS idx_package_updated ON package_cache(last_updated)',
             'CREATE INDEX IF NOT EXISTS idx_package_search ON package_cache(name, description)',
             'CREATE INDEX IF NOT EXISTS idx_package_backend_updated ON package_cache(backend, last_updated)',
+            'CREATE INDEX IF NOT EXISTS idx_package_installed ON package_cache(backend, is_installed)',
             
             # Metadata indexes
             'CREATE INDEX IF NOT EXISTS idx_metadata_package ON package_metadata(package_cache_id)',
