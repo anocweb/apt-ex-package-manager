@@ -329,12 +329,6 @@ class MainView(QMainWindow):
             self.statusbar.showMessage("About Apt-Ex Package Manager", 2000)
     
     def select_category(self, category):
-        # Check if cache is updating
-        if self.cache_updating:
-            self.statusbar.showMessage(f"Loading {category} packages after cache update...", 0)
-            self.pending_action = lambda: self._execute_category_selection(category)
-            return
-        
         self._execute_category_selection(category)
     
     def _execute_category_selection(self, category):
@@ -919,12 +913,6 @@ class MainView(QMainWindow):
     
     def view_categories(self):
         """Show categories view"""
-        # Check if cache is updating
-        if self.cache_updating:
-            self.statusbar.showMessage("Loading categories after cache update...", 0)
-            self.pending_action = lambda: self._execute_view_categories()
-            return
-        
         self._execute_view_categories()
     
     def update_category_counts(self):
