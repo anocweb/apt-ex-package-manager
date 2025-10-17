@@ -310,6 +310,7 @@ class MainView(QMainWindow):
         
         # Load content based on page
         if page_key == 'home':
+            self.add_context_action("🔄 Refresh Cache", self.refresh_cache)
             self.current_packages = self.package_manager.get_installed_packages()[:6]
             self.update_package_display()
             self.statusbar.showMessage("Home - Featured applications", 2000)
@@ -346,6 +347,10 @@ class MainView(QMainWindow):
         
         # Update page title for category
         self.pageTitle.setText(f"{category.title()} Packages")
+        
+        # Clear previous context actions and add refresh
+        self.clear_context_actions()
+        self.setup_category_context_actions()
         
         # Store category for loading
         self.current_category = category
@@ -672,6 +677,10 @@ class MainView(QMainWindow):
         self.add_context_action("🔄 Refresh", self.refresh_updates)
         self.add_context_action("⬆️ Update All", self.update_all_packages)
     
+    def setup_category_context_actions(self):
+        """Setup context actions for category pages"""
+        self.add_context_action("🔄 Refresh Cache", self.refresh_cache)
+    
     def refresh_updates(self):
         """Refresh available updates"""
         self.logging_service.info("Refreshing package updates")
@@ -681,6 +690,24 @@ class MainView(QMainWindow):
         """Update all available packages"""
         self.logging_service.info("Starting system-wide package update")
         self.statusbar.showMessage("Updating all packages...", 3000)
+    
+    def refresh_cache(self):
+        """Force refresh of package cache and category counts"""
+        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+            self.statusbar.showMessage("Cache manager not available", 3000)
+            return
+        
+        if self.cache_updating:
+            self.statusbar.showMessage("Cache update already in progress", 3000)
+            return
+        
+        self.logging_service.info("User requested cache refresh")
+        
+        # Force cache refresh
+        self.cache_manager.force_refresh('apt')
+        
+        # Trigger cache update
+        self.populate_caches_on_startup()
     
     def populate_caches_on_startup(self):
         """Populate caches if empty or expired on application startup"""

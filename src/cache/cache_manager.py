@@ -47,3 +47,9 @@ class CacheManager:
             self.logger.info(f"Clearing all caches for {backend or 'all backends'}")
         self.category_cache.clear_cache(backend)
         self.package_cache.clear_cache(backend)
+    
+    def force_refresh(self, backend: str):
+        """Force cache refresh by clearing and marking as expired"""
+        if self.logger:
+            self.logger.info(f"Forcing cache refresh for {backend}")
+        self.clear_cache(backend)

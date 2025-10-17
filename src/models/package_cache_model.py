@@ -230,7 +230,7 @@ class PackageCacheModel:
             return []
     
     def get_summary_by_sections(self, backend: str, sections: List[str], include_rating: bool = False) -> List[PackageSummary]:
-        """Get lightweight package summaries for category display"""
+        """Get lightweight package summaries for category display with hierarchical section matching"""
         with self.conn_mgr.connection() as conn:
             if not sections:
                 # All packages
@@ -248,8 +248,18 @@ class PackageCacheModel:
                 '''
                 params = [backend]
             else:
-                # Specific sections
-                placeholders = ','.join('?' * len(sections))
+                # Specific sections with hierarchical and repository component matching
+                # Matches: 'games', 'games/action', 'universe/games', 'multiverse/games'
+                conditions = []
+                params = [backend]
+                for section in sections:
+                    conditions.append('(p.section = ? OR p.section LIKE ? OR p.section LIKE ? OR p.section LIKE ?)')
+                    params.append(section)
+                    params.append(f'{section}/%')
+                    params.append(f'%/{section}')
+                    params.append(f'%/{section}/%')
+                
+                section_filter = ' OR '.join(conditions)
                 base_query = f'''
                     SELECT p.name, 
                            CASE 
@@ -259,10 +269,9 @@ class PackageCacheModel:
                            END as description, 
                            p.backend
                     FROM package_cache p
-                    WHERE p.backend = ? AND p.section IN ({placeholders})
+                    WHERE p.backend = ? AND ({section_filter})
                     ORDER BY p.name
                 '''
-                params = [backend] + sections
             
             if include_rating:
                 # Join with ratings
@@ -294,26 +303,27 @@ class PackageCacheModel:
             return cursor.fetchone()[0]
     
     def get_counts_by_sections(self, backend: str, sections: List[str]) -> Dict[str, int]:
-        """Get package counts for multiple sections from cache"""
+        """Get package counts for multiple sections including hierarchical subsections and repository prefixes"""
         if not sections:
             return {}
         
         with self.conn_mgr.connection() as conn:
-            # Check if section_counts is populated
-            cursor = conn.execute('SELECT COUNT(*) FROM section_counts WHERE backend = ?', (backend,))
-            count = cursor.fetchone()[0]
-            if count == 0:
-                # Fallback: compute and cache counts
-                self.update_section_counts(backend)
+            # Count with hierarchical matching and repository component prefixes
+            # Matches: 'games', 'games/action', 'universe/games', 'multiverse/games'
+            counts = {}
+            for section in sections:
+                cursor = conn.execute('''
+                    SELECT COUNT(*) FROM package_cache 
+                    WHERE backend = ? AND (
+                        section = ? OR 
+                        section LIKE ? OR
+                        section LIKE ? OR
+                        section LIKE ?
+                    )
+                ''', (backend, section, f'{section}/%', f'%/{section}', f'%/{section}/%'))
+                counts[section] = cursor.fetchone()[0]
             
-            placeholders = ','.join('?' * len(sections))
-            cursor = conn.execute(f'''
-                SELECT section, count 
-                FROM section_counts 
-                WHERE backend = ? AND section IN ({placeholders})
-            ''', [backend] + sections)
-            
-            return dict(cursor.fetchall())
+            return counts
     
     def update_section_counts(self, backend: str):
         """Update precomputed section counts"""

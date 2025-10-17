@@ -73,7 +73,7 @@ class APTController:
             'system': ['admin', 'base', 'kernel', 'shells'],
             'utilities': ['utils', 'misc', 'otherosfs'],
             'education': ['education', 'science'],
-            'accessibility': ['accessibility'],
+            'accessibility': [],  # No dedicated section - uses keyword search
             'all': []  # Special case for all packages
         }
     
@@ -94,19 +94,22 @@ class APTController:
         return all_packages
     
     def get_packages_by_section(self, section: str) -> List[Package]:
-        """Get packages that belong to a specific APT section"""
+        """Get packages that belong to a specific APT section (including subsections)"""
         try:
             import apt
             cache = apt.Cache()
             packages = []
             
             for package in cache:
-                if hasattr(package.candidate, 'section') and package.candidate.section == section:
-                    packages.append(Package(
-                        name=package.name,
-                        version=package.candidate.version if package.candidate else "unknown",
-                        description=package.candidate.summary if package.candidate else ""
-                    ))
+                if hasattr(package.candidate, 'section') and package.candidate.section:
+                    pkg_section = package.candidate.section
+                    # Match exact section or hierarchical subsections (e.g., "games" matches "games/action")
+                    if pkg_section == section or pkg_section.startswith(section + '/'):
+                        packages.append(Package(
+                            name=package.name,
+                            version=package.candidate.version if package.candidate else "unknown",
+                            description=package.candidate.summary if package.candidate else ""
+                        ))
             
             return packages
         except ImportError:
