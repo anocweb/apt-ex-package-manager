@@ -610,7 +610,28 @@ class MainView(QMainWindow):
         """Update database connection stats in status bar"""
         active = self.connection_manager.get_active_connections()
         total = self.connection_manager.pool_size
-        self.db_stats_label.setText(f"DB: [{active}/{total}]")
+        
+        # Get cache stats
+        cache_count = 0
+        if hasattr(self, 'cache_manager') and self.cache_manager:
+            try:
+                with self.connection_manager.connection() as conn:
+                    cursor = conn.execute('SELECT COUNT(*) FROM package_cache')
+                    cache_count = cursor.fetchone()[0]
+            except:
+                pass
+        
+        # Get query stats
+        query_stats = self.connection_manager.get_query_stats()
+        
+        # Build stats string
+        stats = f"DB: [{active}/{total}]"
+        if cache_count > 0:
+            stats += f" | Cache: {cache_count:,}"
+        stats += f" | QPS: {query_stats['qps']:.1f}"
+        stats += f" | Time: {query_stats['min']:.0f}/{query_stats['avg']:.0f}/{query_stats['max']:.0f}ms"
+        
+        self.db_stats_label.setText(stats)
     
     def closeEvent(self, event):
         """Handle application close"""
@@ -823,10 +844,10 @@ class MainView(QMainWindow):
         self.db_stats_label.setStyleSheet("padding: 0 10px; font-size: 11px;")
         self.statusbar.addPermanentWidget(self.db_stats_label)
         
-        # Update stats every second
+        # Update stats every 0.5 seconds
         self.stats_timer = QTimer()
         self.stats_timer.timeout.connect(self.update_db_stats)
-        self.stats_timer.start(1000)
+        self.stats_timer.start(500)
         self.update_db_stats()
         
         # Log button

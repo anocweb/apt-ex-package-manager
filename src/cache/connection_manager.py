@@ -16,6 +16,11 @@ class SQLiteConnectionManager:
         self._closed = False
         self.logger = logging_service.get_logger('db.connection') if logging_service else None
         
+        # Query statistics
+        self.query_count = 0
+        self.query_times = []
+        self.stats_start_time = None
+        
         if self.logger:
             self.logger.info(f"Initializing connection pool: {pool_size} connections to {db_path}")
         
@@ -84,14 +89,20 @@ class SQLiteConnectionManager:
     @contextmanager
     def transaction(self, isolation_level: Optional[str] = None):
         """Managed transaction context"""
+        import time
         conn = self.get_connection()
         old_isolation = conn.isolation_level
+        start_time = time.time()
         
         try:
             # Set isolation level to enable transactions
             conn.isolation_level = isolation_level if isolation_level else 'DEFERRED'
             yield conn
             conn.commit()
+            
+            # Track query stats
+            elapsed = time.time() - start_time
+            self._record_query(elapsed)
         except Exception:
             conn.rollback()
             raise
@@ -102,15 +113,51 @@ class SQLiteConnectionManager:
     @contextmanager
     def connection(self):
         """Simple connection context (auto-commit)"""
+        import time
         conn = self.get_connection()
+        start_time = time.time()
+        
         try:
             yield conn
+            
+            # Track query stats
+            elapsed = time.time() - start_time
+            self._record_query(elapsed)
         finally:
             self.return_connection(conn)
+    
+    def _record_query(self, elapsed_time: float):
+        """Record query execution time"""
+        import time
+        if self.stats_start_time is None:
+            self.stats_start_time = time.time()
+        
+        self.query_count += 1
+        self.query_times.append(elapsed_time)
+        
+        # Keep only last 1000 query times
+        if len(self.query_times) > 1000:
+            self.query_times = self.query_times[-1000:]
     
     def get_active_connections(self) -> int:
         """Get number of active connections (not in pool)"""
         return self.pool_size - self._pool.qsize()
+    
+    def get_query_stats(self) -> dict:
+        """Get query statistics"""
+        import time
+        if not self.query_times:
+            return {'qps': 0, 'min': 0, 'max': 0, 'avg': 0}
+        
+        elapsed = time.time() - self.stats_start_time if self.stats_start_time else 1
+        qps = self.query_count / elapsed if elapsed > 0 else 0
+        
+        return {
+            'qps': qps,
+            'min': min(self.query_times) * 1000,  # Convert to ms
+            'max': max(self.query_times) * 1000,
+            'avg': sum(self.query_times) / len(self.query_times) * 1000
+        }
     
     def close_all(self):
         """Close all pooled connections"""
