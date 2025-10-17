@@ -90,9 +90,11 @@ class SQLiteConnectionManager:
     def transaction(self, isolation_level: Optional[str] = None):
         """Managed transaction context"""
         import time
+        import traceback
         conn = self.get_connection()
         old_isolation = conn.isolation_level
         start_time = time.time()
+        caller = traceback.extract_stack()[-2]
         
         try:
             # Set isolation level to enable transactions
@@ -102,7 +104,8 @@ class SQLiteConnectionManager:
             
             # Track query stats
             elapsed = time.time() - start_time
-            self._record_query(elapsed)
+            query_type = f"transaction from {caller.filename}:{caller.lineno}"
+            self._record_query(elapsed, query_type)
         except Exception:
             conn.rollback()
             raise
@@ -114,19 +117,22 @@ class SQLiteConnectionManager:
     def connection(self):
         """Simple connection context (auto-commit)"""
         import time
+        import traceback
         conn = self.get_connection()
         start_time = time.time()
+        caller = traceback.extract_stack()[-2]
         
         try:
             yield conn
             
             # Track query stats
             elapsed = time.time() - start_time
-            self._record_query(elapsed)
+            query_type = f"query from {caller.filename}:{caller.lineno}"
+            self._record_query(elapsed, query_type)
         finally:
             self.return_connection(conn)
     
-    def _record_query(self, elapsed_time: float):
+    def _record_query(self, elapsed_time: float, query_type: str = 'unknown'):
         """Record query execution time"""
         import time
         if self.stats_start_time is None:
@@ -134,6 +140,10 @@ class SQLiteConnectionManager:
         
         self.query_count += 1
         self.query_times.append(elapsed_time)
+        
+        # Log slow queries (>100ms)
+        if elapsed_time > 0.1 and self.logger:
+            self.logger.warning(f"Slow query ({query_type}): {elapsed_time*1000:.0f}ms")
         
         # Keep only last 1000 query times
         if len(self.query_times) > 1000:
