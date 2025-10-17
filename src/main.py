@@ -53,7 +53,7 @@ def main():
     db_manager = DatabaseManager(logging_service=logging_service)
     
     package_manager = PackageManager(db_manager.connection_manager, logging_service)
-    main_view = MainView(package_manager, db_manager.connection_manager, dev_logging=args.dev_logging, stdout_log_level=args.stdout_log_level)
+    main_view = MainView(package_manager, db_manager.connection_manager, logging_service=logging_service, dev_logging=args.dev_logging, stdout_log_level=args.stdout_log_level)
     
     # Auto-open log window if --dev-logging is specified
     if args.dev_logging:

@@ -11,7 +11,7 @@ from widgets.virtual_category_container import VirtualCategoryContainer
 import os
 
 class MainView(QMainWindow):
-    def __init__(self, package_manager, connection_manager, dev_logging=False, stdout_log_level='WARNING'):
+    def __init__(self, package_manager, connection_manager, logging_service=None, dev_logging=False, stdout_log_level='WARNING'):
         super().__init__()
         self.package_manager = package_manager
         self.connection_manager = connection_manager
@@ -29,14 +29,17 @@ class MainView(QMainWindow):
         self.log_messages = []
         self.log_window = None  # Track log window instance
         
-        # Initialize logging service
-        self.logging_service = LoggingService(stdout_log_level=stdout_log_level)
+        # Use provided logging service or create new one
+        if logging_service:
+            self.logging_service = logging_service
+        else:
+            self.logging_service = LoggingService(stdout_log_level=stdout_log_level)
         self.logging_service.set_app_log_callback(self.add_log_message)
         
         # Get named logger for UI operations
         self.logger = self.logging_service.get_logger('ui')
         
-        # Pre-register loggers
+        # Pre-register additional loggers
         self.logging_service.get_logger('odrs')
         self.logging_service.get_logger('rating_cache')
         self.logging_service.get_logger('db.connection')
