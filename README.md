@@ -37,6 +37,9 @@ apt-ex-package-manager
 ## Documentation
 - [Feature Requirements](docs/FEATURES.md) - Detailed APT functionality specifications
 - [Design Guidelines](docs/DESIGN_GUIDELINES.md) - KDE Plasma 6 integration guidelines
+- [Plugin Architecture](docs/PLUGIN_ARCHITECTURE.md) - Backend plugin system design and implementation
+- [Plugin Example](docs/PLUGIN_EXAMPLE.md) - Complete example of creating a backend plugin
+- [Data Structures](docs/DATA_STRUCTURES.md) - Required data structures and contracts for plugins
 
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
