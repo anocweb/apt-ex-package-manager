@@ -15,26 +15,19 @@
 
 ## Architecture
 - [View Architecture](architecture/VIEW_ARCHITECTURE.md) - Panel controllers and worker threads
-- [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB implementation (migrating from SQLite)
-- [Caching System](architecture/CACHING_SYSTEM.md) - Cache strategy
-- [MVC Refactor Architecture](architecture/MVC_REFACTOR_ARCHITECTURE.md) - Application controller and service architecture
-- [Service Container](architecture/SERVICE_CONTAINER.md) - Centralized service registry and dependency injection
-- [Plugin Architecture](architecture/PLUGIN_ARCHITECTURE.md) - Planned plugin system
-- [Data Structures](architecture/DATA_STRUCTURES.md) - Data models for future plugins
+- [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB caching system
+- [Plugin Architecture](architecture/PLUGIN_ARCHITECTURE.md) - Multi-backend plugin system
+- [MVC Architecture](architecture/MVC_REFACTOR_ARCHITECTURE.md) - Application controller and services
+- [Service Container](architecture/SERVICE_CONTAINER.md) - Dependency injection
+- [Data Structures](architecture/DATA_STRUCTURES.md) - Data models
 - [Repository Implementation](architecture/REPOSITORY_IMPLEMENTATION.md) - Repository management
 
 ## Developer Guides
 - [Panel Development Guide](developer/PANEL_DEVELOPMENT_GUIDE.md) - Creating new panels
 - [AI-Assisted Development](developer/AI_ASSISTED_DEVELOPMENT.md) - Using AI tools
 - [MVC Quick Reference](developer/MVC_QUICK_REFERENCE.md) - Working with MVC architecture
-- [Action Plan](developer/DOCUMENTATION_ACTION_PLAN.md) - Documentation tasks
 
-## Planning
-- [MVC Refactor Plan](planning/main-py-mvc-refactor.md) - Original refactor plan
-- [MVC Refactor Completed](planning/mvc-refactor-completed.md) - Implementation summary
-- [MVC Refactor Final Summary](planning/MVC_REFACTOR_FINAL_SUMMARY.md) - Complete overview and metrics
-
-## Refactoring
+## Implementation Notes
 - [Refactoring Summary](REFACTORING_SUMMARY.md) - View architecture refactoring
 - [Widget Standardization](WIDGET_STANDARDIZATION.md) - List item widget improvements
 
