@@ -112,6 +112,24 @@ class MainView(QMainWindow):
         self.virtual_category_container.install_requested.connect(self.install_package)
         self.virtual_category_container.install_requested = self.install_package
         
+        # Add backend selector to home panel
+        from PyQt6.QtWidgets import QComboBox, QHBoxLayout
+        if not hasattr(home_panel, 'backend_selector'):
+            # Create backend selector
+            backend_selector = QComboBox()
+            backend_selector.addItem("All Backends", None)
+            for backend_id in self.package_manager.get_available_backends():
+                backend = self.package_manager.get_backend(backend_id)
+                backend_selector.addItem(backend.display_name, backend_id)
+            backend_selector.currentIndexChanged.connect(self.on_backend_changed)
+            home_panel.backend_selector = backend_selector
+            
+            # Add to layout if search_input has a parent layout
+            if home_panel.search_input.parent():
+                parent_widget = home_panel.search_input.parent()
+                if parent_widget.layout():
+                    parent_widget.layout().insertWidget(0, backend_selector)
+        
         # Connect search functionality from home panel
         home_panel.search_input.textChanged.connect(self.search_packages)
         
@@ -206,20 +224,33 @@ class MainView(QMainWindow):
             except Exception as e:
                 self.logging_service.error(f"Failed to load panel {panel_name}: {e}")
 
+    def on_backend_changed(self, index):
+        """Handle backend selector change"""
+        home_panel = self.panels['home']
+        selected_backend = home_panel.backend_selector.currentData()
+        self.logger.info(f"Backend changed to: {selected_backend or 'all'}")
+        self.search_packages()
+    
     def search_packages(self):
         self.logger.debug("Search packages function called")
         home_panel = self.panels['home']
         query = home_panel.search_input.text()
+        
+        # Get selected backend
+        selected_backend = None
+        if hasattr(home_panel, 'backend_selector'):
+            selected_backend = home_panel.backend_selector.currentData()
+        
         if query:
-            self.logger.info(f"Searching packages: {query}")
-            self.current_packages = self.package_manager.search_packages(query)
+            self.logger.info(f"Searching packages: {query} (backend: {selected_backend or 'all'})")
+            self.current_packages = self.package_manager.search_packages(query, backend=selected_backend)
         else:
-            self.current_packages = self.package_manager.get_installed_packages()
+            self.current_packages = self.package_manager.get_installed_packages(backend=selected_backend or 'apt')
         self.update_package_display()
 
     def load_initial_packages(self):
         self.logger.debug("Loading initial packages")
-        self.current_packages = self.package_manager.get_installed_packages()
+        self.current_packages = self.package_manager.get_installed_packages(backend='apt')
         self.update_package_display()
 
     def update_package_display(self):
@@ -246,9 +277,20 @@ class MainView(QMainWindow):
         
         layout = QGridLayout(card)
         
-        name_label = QLabel(package.name)
-        name_label.setStyleSheet("font-weight: bold;")
-        layout.addWidget(name_label, 0, 0, 1, 2)
+        # Name with backend badge
+        name_text = package.name
+        if hasattr(package, 'backend'):
+            backend_badge = f" [{package.backend.upper()}]"
+            name_label = QLabel(name_text)
+            name_label.setStyleSheet("font-weight: bold;")
+            badge_label = QLabel(backend_badge)
+            badge_label.setStyleSheet("font-size: 9px; color: palette(mid);")
+            layout.addWidget(name_label, 0, 0)
+            layout.addWidget(badge_label, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        else:
+            name_label = QLabel(name_text)
+            name_label.setStyleSheet("font-weight: bold;")
+            layout.addWidget(name_label, 0, 0, 1, 2)
         
         desc_label = QLabel(package.description[:50] + "..." if len(package.description) > 50 else package.description)
         desc_label.setWordWrap(True)
@@ -262,7 +304,7 @@ class MainView(QMainWindow):
 
     def install_package(self, package_name):
         self.logger.info(f"User requested install: {package_name}")
-        self.package_manager.install_package(package_name)
+        self.package_manager.install_package(package_name, backend='apt')
         self.statusbar.showMessage(f"Installing {package_name}...", 3000)
     
     def get_panel_index(self, panel_name):
@@ -311,7 +353,7 @@ class MainView(QMainWindow):
         # Load content based on page
         if page_key == 'home':
             self.add_context_action("🔄 Refresh Cache", self.refresh_cache)
-            self.current_packages = self.package_manager.get_installed_packages()[:6]
+            self.current_packages = self.package_manager.get_installed_packages(backend='apt', limit=6)
             self.update_package_display()
             self.statusbar.showMessage("Home - Featured applications", 2000)
         elif page_key == 'installed':
@@ -435,9 +477,15 @@ class MainView(QMainWindow):
                 except Exception as e:
                     self.error_signal.emit(str(e))
         
+        # Get APT backend for installed packages
+        apt_backend = self.package_manager.get_backend('apt')
+        if not apt_backend:
+            self.statusbar.showMessage("APT backend not available", 3000)
+            return
+        
         # Create and start worker
         self.installed_worker = InstalledPackagesWorker(
-            self.package_manager.apt_controller,
+            apt_backend,
             self.lmdb_manager
         )
         self.installed_worker.initial_batch_signal.connect(self.on_installed_initial_loaded)
@@ -876,8 +924,14 @@ class MainView(QMainWindow):
                 except Exception as e:
                     self.error_signal.emit(str(e))
         
+        # Get APT backend for updates
+        apt_backend = self.package_manager.get_backend('apt')
+        if not apt_backend:
+            self.statusbar.showMessage("APT backend not available", 3000)
+            return
+        
         # Create and start worker
-        self.update_worker = UpdateCheckWorker(self.package_manager.apt_controller)
+        self.update_worker = UpdateCheckWorker(apt_backend)
         self.update_worker.finished_signal.connect(self.on_updates_loaded)
         self.update_worker.error_signal.connect(self.on_updates_error)
         self.update_worker.start()
