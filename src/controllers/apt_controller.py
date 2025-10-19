@@ -2,8 +2,8 @@ from models.package_model import Package
 from typing import List, Set
 
 class APTController:
-    def __init__(self, connection_manager=None, logging_service=None):
-        self.connection_manager = connection_manager
+    def __init__(self, lmdb_manager=None, logging_service=None):
+        self.lmdb_manager = lmdb_manager
         self.logger = logging_service.get_logger('apt') if logging_service else None
     
     def log(self, message):
@@ -44,18 +44,29 @@ class APTController:
             Package("git", "2.34", "Version control")
         ]
     
-    def get_installed_packages_list(self, connection_manager, limit: int = None, offset: int = 0) -> List[dict]:
+    def get_installed_packages_list(self, lmdb_manager, limit: int = None, offset: int = 0) -> List[dict]:
         """Get list of installed packages with minimal info for display"""
         try:
-            from models.package_cache_model import PackageCacheModel
-            model = PackageCacheModel(connection_manager)
-            return model.get_installed_packages('apt', limit, offset)
+            from cache import PackageCacheModel
+            pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
+            packages = pkg_cache.get_installed_packages()
+            
+            # Apply pagination
+            if limit:
+                packages = packages[offset:offset+limit]
+            
+            # Convert to dict format
+            return [{
+                'name': pkg.name,
+                'version': pkg.version,
+                'description': pkg.summary or pkg.description
+            } for pkg in packages]
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error loading installed packages: {e}")
             return []
     
-    def update_installed_status(self, connection_manager):
+    def update_installed_status(self, lmdb_manager):
         """Update is_installed flag for all packages in cache"""
         self.log("Updating installed package status")
         try:
@@ -70,18 +81,15 @@ class APTController:
             
             self.log(f"Found {len(installed_names)} installed packages")
             
-            # Update database
-            with connection_manager.transaction() as conn:
-                # Reset all to not installed
-                conn.execute('UPDATE package_cache SET is_installed = 0 WHERE backend = ?', ('apt',))
-                
-                # Mark installed packages
-                if installed_names:
-                    placeholders = ','.join('?' * len(installed_names))
-                    conn.execute(
-                        f'UPDATE package_cache SET is_installed = 1 WHERE backend = ? AND name IN ({placeholders})',
-                        ['apt'] + list(installed_names)
-                    )
+            # Update cache
+            from cache import PackageCacheModel
+            pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
+            all_packages = pkg_cache.get_all_packages()
+            
+            for pkg in all_packages:
+                is_installed = pkg.name in installed_names
+                if pkg.is_installed != is_installed:
+                    pkg_cache.update_installed_status(pkg.package_id, is_installed)
             
             self.log("Installed status updated")
             return True

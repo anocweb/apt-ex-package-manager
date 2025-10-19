@@ -11,10 +11,10 @@ from widgets.virtual_category_container import VirtualCategoryContainer
 import os
 
 class MainView(QMainWindow):
-    def __init__(self, package_manager, connection_manager, logging_service=None, dev_logging=False, stdout_log_level='WARNING'):
+    def __init__(self, package_manager, lmdb_manager, logging_service=None, dev_logging=False, stdout_log_level='WARNING'):
         super().__init__()
         self.package_manager = package_manager
-        self.connection_manager = connection_manager
+        self.lmdb_manager = lmdb_manager
         self.current_packages = []
         self.selected_button = None
         self.sidebar_buttons = {}
@@ -179,7 +179,7 @@ class MainView(QMainWindow):
         self.populate_caches_on_startup()
         
         # Update category counts if cache is already available
-        if hasattr(self, 'cache_manager') and self.cache_manager:
+        if hasattr(self, 'lmdb_manager') and self.lmdb_manager:
             self.update_category_counts()
     
     def load_panels(self):
@@ -408,16 +408,16 @@ class MainView(QMainWindow):
             remaining_batch_signal = pyqtSignal(list)
             error_signal = pyqtSignal(str)
             
-            def __init__(self, apt_controller, connection_manager):
+            def __init__(self, apt_controller, lmdb_manager):
                 super().__init__()
                 self.apt_controller = apt_controller
-                self.connection_manager = connection_manager
+                self.lmdb_manager = lmdb_manager
             
             def run(self):
                 try:
                     # Load first 20 packages
                     initial_packages = self.apt_controller.get_installed_packages_list(
-                        self.connection_manager, limit=20, offset=0
+                        self.lmdb_manager, limit=20, offset=0
                     )
                     self.initial_batch_signal.emit(initial_packages)
                     
@@ -426,7 +426,7 @@ class MainView(QMainWindow):
                     batch_size = 50
                     while True:
                         batch = self.apt_controller.get_installed_packages_list(
-                            self.connection_manager, limit=batch_size, offset=offset
+                            self.lmdb_manager, limit=batch_size, offset=offset
                         )
                         if not batch:
                             break
@@ -438,7 +438,7 @@ class MainView(QMainWindow):
         # Create and start worker
         self.installed_worker = InstalledPackagesWorker(
             self.package_manager.apt_controller,
-            self.connection_manager
+            self.lmdb_manager
         )
         self.installed_worker.initial_batch_signal.connect(self.on_installed_initial_loaded)
         self.installed_worker.remaining_batch_signal.connect(self.on_installed_remaining_loaded)
@@ -572,15 +572,14 @@ class MainView(QMainWindow):
         sections = mapping.get(self.current_category, [])
         
         # Get packages from cache only
-        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+        if not hasattr(self, 'lmdb_manager') or not self.lmdb_manager:
             self.statusbar.showMessage("No cached data available", 3000)
             return
         
         # Get lightweight summaries instead of full package objects
         include_rating = self.app_settings.get_odrs_enabled()
-        cached_packages = self.cache_manager.package_cache.model.get_summary_by_sections(
-            'apt', sections if self.current_category != 'all' else [], include_rating
-        )
+        # TODO: Implement get_summary_by_sections for LMDB
+        cached_packages = []
         
         # Set ODRS service for virtual container
         if hasattr(self, 'odrs_service'):
@@ -766,29 +765,19 @@ class MainView(QMainWindow):
 
     
     def update_db_stats(self):
-        """Update database connection stats in status bar"""
-        active = self.connection_manager.get_active_connections()
-        total = self.connection_manager.pool_size
+        """Update database stats in status bar"""
+        # Simple LMDB stats
+        stats = "LMDB: Ready"
         
-        # Get cache stats
-        cache_count = 0
-        if hasattr(self, 'cache_manager') and self.cache_manager:
-            try:
-                with self.connection_manager.connection() as conn:
-                    cursor = conn.execute('SELECT COUNT(*) FROM package_cache')
-                    cache_count = cursor.fetchone()[0]
-            except:
-                pass
-        
-        # Get query stats
-        query_stats = self.connection_manager.get_query_stats()
-        
-        # Build stats string
-        stats = f"DB: [{active}/{total}]"
-        if cache_count > 0:
-            stats += f" | Cache: {cache_count:,}"
-        stats += f" | QPS: {query_stats['qps']:.1f}"
-        stats += f" | Time: {query_stats['min']:.0f}/{query_stats['avg']:.0f}/{query_stats['max']:.0f}ms"
+        # Get cache count if possible
+        try:
+            from cache import PackageCacheModel
+            pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+            packages = pkg_cache.get_all_packages(limit=1)
+            if packages:
+                stats = "LMDB: Cached"
+        except:
+            pass
         
         self.db_stats_label.setText(stats)
     
@@ -1044,7 +1033,7 @@ class MainView(QMainWindow):
     
     def refresh_cache(self):
         """Force refresh of package cache and category counts"""
-        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+        if not hasattr(self, 'lmdb_manager') or not self.lmdb_manager:
             self.statusbar.showMessage("Cache manager not available", 3000)
             return
         
@@ -1055,7 +1044,7 @@ class MainView(QMainWindow):
         self.logging_service.info("User requested cache refresh")
         
         # Force cache refresh
-        self.cache_manager.force_refresh('apt')
+        self.lmdb_manager.force_refresh('apt')
         
         # Trigger cache update
         self.populate_caches_on_startup()
@@ -1063,14 +1052,11 @@ class MainView(QMainWindow):
     def populate_caches_on_startup(self):
         """Populate caches if empty or expired on application startup"""
         from PyQt6.QtCore import QThread, pyqtSignal
-        from cache.cache_manager import CacheManager
-        
-        self.cache_manager = CacheManager(self.connection_manager, logging_service=self.logging_service)
         
         # Check what needs updating
-        update_categories = self.cache_manager.needs_category_update('apt')
-        update_packages = self.cache_manager.needs_package_update('apt')
-        update_installed = self.cache_manager.needs_installed_update('apt')
+        update_categories = False  # TODO: implement cache validation('apt')
+        update_packages = False  # TODO: implement cache validation('apt')
+        update_installed = False  # TODO: implement cache validation('apt')
         
         if update_categories or update_packages or update_installed:
             self.cache_updating = True
@@ -1091,13 +1077,13 @@ class MainView(QMainWindow):
                 progress_signal = pyqtSignal(str)
                 count_signal = pyqtSignal(int, int)  # processed, total
                 
-                def __init__(self, update_categories, update_packages, update_installed, logging_service, cache_manager):
+                def __init__(self, update_categories, update_packages, update_installed, logging_service, lmdb_manager):
                     super().__init__()
                     self.update_categories = update_categories
                     self.update_packages = update_packages
                     self.update_installed = update_installed
                     self.logging_service = logging_service
-                    self.cache_manager = cache_manager
+                    self.lmdb_manager = lmdb_manager
                 
                 def run(self):
                     try:
@@ -1108,7 +1094,7 @@ class MainView(QMainWindow):
                         if self.update_categories:
                             self.logging_service.info("Starting category update")
                             categories = apt_controller.get_section_details()
-                            self.cache_manager.set_categories('apt', categories)
+                            self.lmdb_manager.set_categories('apt', categories)
                             self.logging_service.info("Category cache updated")
                         
                         # Update packages if needed
@@ -1131,64 +1117,50 @@ class MainView(QMainWindow):
                                 batch_end = min(batch_start + batch_size, total)
                                 batch = packages[batch_start:batch_end]
                                 
-                                # Use transaction for batch upsert
+                                # Use LMDB for batch upsert
                                 try:
                                     self.logging_service.debug(f"Batch {batch_start}-{batch_end} starting")
-                                    with self.cache_manager.connection_manager.transaction('IMMEDIATE') as conn:
-                                        for pkg_data in batch:
-                                            # Upsert: insert or update, preserving is_installed
-                                            cursor = conn.execute('''
-                                                INSERT INTO package_cache 
-                                                (backend, package_id, name, version, description, summary, section, 
-                                                 architecture, size, installed_size, maintainer, homepage)
-                                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                                ON CONFLICT(backend, package_id) DO UPDATE SET
-                                                    name=excluded.name,
-                                                    version=excluded.version,
-                                                    description=excluded.description,
-                                                    summary=excluded.summary,
-                                                    section=excluded.section,
-                                                    architecture=excluded.architecture,
-                                                    size=excluded.size,
-                                                    installed_size=excluded.installed_size,
-                                                    maintainer=excluded.maintainer,
-                                                    homepage=excluded.homepage,
-                                                    last_updated=CURRENT_TIMESTAMP
-                                                WHERE backend = excluded.backend AND package_id = excluded.package_id
-                                            ''', (pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
-                                                  pkg_data.get('version'), pkg_data.get('description'),
-                                                  pkg_data.get('summary'), pkg_data.get('section'),
-                                                  pkg_data.get('architecture'), pkg_data.get('size'),
-                                                  pkg_data.get('installed_size'), pkg_data.get('maintainer'),
-                                                  pkg_data.get('homepage')))
+                                    from cache import PackageCacheModel, PackageData
+                                    pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+                                    
+                                    for pkg_data in batch:
+                                        package = PackageData(
+                                            package_id=pkg_data['package_id'],
+                                            name=pkg_data['name'],
+                                            version=pkg_data.get('version'),
+                                            description=pkg_data.get('description', ''),
+                                            summary=pkg_data.get('summary'),
+                                            section=pkg_data.get('section'),
+                                            architecture=pkg_data.get('architecture'),
+                                            size=pkg_data.get('size'),
+                                            installed_size=pkg_data.get('installed_size'),
+                                            maintainer=pkg_data.get('maintainer'),
+                                            homepage=pkg_data.get('homepage'),
+                                            metadata=pkg_data.get('metadata', {})
+                                        )
+                                        pkg_cache.add_package(package)
+                                    
                                     self.logging_service.debug(f"Batch {batch_start}-{batch_end} committed")
                                 except Exception as batch_err:
                                     self.logging_service.error(f"Batch {batch_start}-{batch_end} failed: {batch_err}")
                                     raise
-                                
-                                # Update progress after each batch
-                                self.count_signal.emit(batch_end, total)
-                        
-                        self.logging_service.info("All batches complete")
                         
                         # Delete stale packages not updated in this refresh
                         self.logging_service.info("Removing stale packages")
                         max_age_minutes = min(10, 24 * 60)  # 10 min or cache TTL, whichever is smaller
-                        deleted = self.cache_manager.package_cache.model.delete_stale_packages('apt', max_age_minutes)
                         self.logging_service.info(f"Removed {deleted} stale packages")
                         
                         # Update section counts after all packages cached (outside transaction)
                         if self.update_packages:
                             self.logging_service.info("Updating section counts")
                             self.progress_signal.emit("Updating section counts")
-                            self.cache_manager.package_cache.model.update_section_counts('apt')
                             self.logging_service.info("Section counts updated")
                         
                         # Update installed package status if needed
                         if self.update_installed or self.update_packages:
                             self.logging_service.info("Updating installed package status")
                             self.progress_signal.emit("Updating installed status")
-                            apt_controller.update_installed_status(self.cache_manager.connection_manager)
+                            apt_controller.update_installed_status(self.lmdb_manager.lmdb_manager)
                             self.logging_service.info("Installed status updated")
                         
                         self.finished_signal.emit()
@@ -1200,7 +1172,7 @@ class MainView(QMainWindow):
                         self.error_signal.emit(str(e))
             
             # Create and start worker
-            self.cache_worker = CacheUpdateWorker(update_categories, update_packages, update_installed, self.logging_service, self.cache_manager)
+            self.cache_worker = CacheUpdateWorker(update_categories, update_packages, update_installed, self.logging_service, self.lmdb_manager)
             self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
             self.cache_worker.error_signal.connect(self.on_cache_update_error)
             self.cache_worker.progress_signal.connect(self.update_status_message)
@@ -1208,7 +1180,7 @@ class MainView(QMainWindow):
             self.cache_worker.start()
         else:
             # Cache is still valid
-            self.cache_manager.logger.info("Cache is still valid, no update needed")
+            self.lmdb_manager.logger.info("Cache is still valid, no update needed")
     
     def on_cache_update_finished(self):
         """Handle cache update completion"""
@@ -1333,8 +1305,8 @@ class MainView(QMainWindow):
         tree.clear()
         
         # Get cached categories or fetch fresh data
-        if hasattr(self, 'cache_manager'):
-            section_details = self.cache_manager.get_categories('apt')
+        if hasattr(self, 'lmdb_manager'):
+            section_details = self.lmdb_manager.get_categories('apt')
         else:
             from cache.category_cache import CategoryCache
             cache = CategoryCache(logging_service=self.logging_service)
@@ -1379,7 +1351,7 @@ class MainView(QMainWindow):
                 from models.rating_cache_model import RatingCacheModel
                 self.odrs_service = ODRSService(status_callback=self.set_status_message, logging_service=self.logging_service)
                 # Set up the cache model with connection manager
-                self.odrs_service.cache_model = RatingCacheModel(self.connection_manager, logging_service=self.logging_service)
+                self.odrs_service.cache_model = RatingCacheModel(self.lmdb_manager, logging_service=self.logging_service)
             else:
                 self.odrs_service = None
         
@@ -1393,7 +1365,7 @@ class MainView(QMainWindow):
     
     def update_category_counts(self):
         """Update category button texts with package counts from cache"""
-        if not hasattr(self, 'cache_manager') or not self.cache_manager:
+        if not hasattr(self, 'lmdb_manager') or not self.lmdb_manager:
             self.logging_service.debug("No cache manager available for category counts")
             return
         
@@ -1415,7 +1387,9 @@ class MainView(QMainWindow):
         }
         
         # Get all packages count for "All Apps"
-        all_packages = self.cache_manager.get_packages('apt') or []
+        from cache import PackageCacheModel
+        pkg_cache = PackageCacheModel(self.lmdb_manager, "apt")
+        all_packages = pkg_cache.get_all_packages() or []
         self.allAppsBtn.setText(f"📱 All Applications ({len(all_packages)})")
         
         # Update each category button with icons preserved
@@ -1439,7 +1413,8 @@ class MainView(QMainWindow):
             all_sections.update(sections)
         
         # Fetch all counts in one query
-        section_counts = self.cache_manager.package_cache.model.get_counts_by_sections('apt', list(all_sections))
+        # TODO: Implement get_counts_by_sections for LMDB
+        section_counts = {}
         
         for category, (button, icon_text) in category_buttons.items():
             sections = mapping.get(category, [])

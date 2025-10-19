@@ -1,88 +1,210 @@
-from typing import Dict, List, Optional
-from models.package_cache_model import PackageCacheModel, PackageCache as PackageCacheData
-from cache.connection_manager import SQLiteConnectionManager
+import json
+from typing import List, Optional, Dict, Any
+from datetime import datetime, timedelta
+from cache.lmdb_manager import LMDBManager
+from cache.data_structures import PackageData, IndexData
 
-class PackageCache:
-    """Package cache interface"""
+class PackageCacheModel:
+    """Model for managing package cache in LMDB"""
     
-    def __init__(self, connection_manager: SQLiteConnectionManager, logging_service=None):
-        self.model = PackageCacheModel(connection_manager)
-        self.conn_mgr = connection_manager
-        self.logger = logging_service.get_logger('cache.package') if logging_service else None
+    def __init__(self, lmdb_manager: LMDBManager, backend: str = 'apt'):
+        self.lmdb = lmdb_manager
+        self.backend = backend.lower()
+        self.db_name = f'packages_{self.backend}'
+        self.indexes_db = LMDBManager.DB_INDEXES
     
-    def log(self, message):
-        """Log message if logger is available"""
-        if self.logger:
-            self.logger.info(message)
+    def add_package(self, package_data: PackageData) -> bool:
+        """Add or update package in cache"""
+        try:
+            self.lmdb.put(self.db_name, package_data.package_id, package_data.to_dict())
+            self._update_indexes(package_data)
+            return True
+        except Exception:
+            return False
     
-    def get_packages(self, backend: str) -> Optional[List[PackageCacheData]]:
-        """Get cached packages for backend"""
-        if self.logger:
-            self.logger.debug(f"Getting packages for {backend}")
-        if not self.is_cache_valid(backend):
-            self.log(f"Package cache expired for {backend}")
-            return None
-        packages = self.model.get_by_backend(backend)
-        self.log(f"Retrieved {len(packages) if packages else 0} cached packages for {backend}")
+    def get_package(self, package_id: str) -> Optional[PackageData]:
+        """Get package by ID"""
+        data = self.lmdb.get(self.db_name, package_id)
+        return PackageData.from_dict(data) if data else None
+    
+    def delete_package(self, package_id: str) -> bool:
+        """Delete package from cache"""
+        package = self.get_package(package_id)
+        if package:
+            self._remove_from_indexes(package)
+        return self.lmdb.delete(self.db_name, package_id)
+    
+    def get_all_packages(self, limit: Optional[int] = None, offset: int = 0) -> List[PackageData]:
+        """Get all packages with pagination"""
+        packages = []
+        db = self.lmdb.get_db(self.db_name)
+        
+        with self.lmdb.transaction() as txn:
+            cursor = txn.cursor(db=db)
+            
+            # Skip offset
+            if cursor.first():
+                for _ in range(offset):
+                    if not cursor.next():
+                        break
+                
+                # Collect packages
+                count = 0
+                for key, value in cursor:
+                    if limit and count >= limit:
+                        break
+                    packages.append(PackageData.from_dict(json.loads(value.decode())))
+                    count += 1
+        
         return packages
     
-    def set_packages(self, backend: str, packages: List[Dict]):
-        """Cache packages for backend using bulk insert"""
-        # Clear existing packages for this backend
-        self.clear_cache(backend)
+    def search_packages(self, query: str) -> List[PackageData]:
+        """Search packages by name or description"""
+        query_lower = query.lower()
+        results = []
+        db = self.lmdb.get_db(self.db_name)
         
-        if not packages:
-            return
+        with self.lmdb.transaction() as txn:
+            cursor = txn.cursor(db=db)
+            for key, value in cursor:
+                pkg_data = json.loads(value.decode())
+                name = pkg_data.get('name', '').lower()
+                desc = pkg_data.get('description', '').lower()
+                
+                if query_lower in name or query_lower in desc:
+                    results.append(PackageData.from_dict(pkg_data))
         
-        # Bulk insert for better performance
-        with self.conn_mgr.transaction() as conn:
-            # Prepare package data
-            package_data = []
-            
-            for pkg_data in packages:
-                package_values = (
-                    pkg_data['backend'], pkg_data['package_id'], pkg_data['name'],
-                    pkg_data.get('version'), pkg_data.get('description'), pkg_data.get('summary'),
-                    pkg_data.get('section'), pkg_data.get('architecture'), pkg_data.get('size'),
-                    pkg_data.get('installed_size'), pkg_data.get('maintainer'), pkg_data.get('homepage'),
-                    pkg_data.get('license'), pkg_data.get('source_url'), pkg_data.get('icon_url')
-                )
-                package_data.append(package_values)
-            
-            # Bulk insert packages
-            conn.executemany('''
-                INSERT INTO package_cache 
-                (backend, package_id, name, version, description, summary, section, 
-                 architecture, size, installed_size, maintainer, homepage, license, 
-                 source_url, icon_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', package_data)
-        
-        self.log(f"Bulk cached {len(packages)} packages for {backend}")
+        return results
     
-    def clear_cache(self, backend: Optional[str] = None):
-        """Clear cache for specific backend or all backends"""
-        if self.logger:
-            self.logger.debug(f"Clearing package cache for {backend or 'all backends'}")
+    def get_packages_by_section(self, section: str) -> List[PackageData]:
+        """Get packages by section using index"""
+        index_key = f"section:{self.backend}:{section}"
+        index_data = self.lmdb.get(self.indexes_db, index_key)
         
-        with self.conn_mgr.transaction('IMMEDIATE') as conn:
-            if backend:
-                cursor = conn.execute('DELETE FROM package_cache WHERE backend = ?', (backend,))
-                count = cursor.rowcount
-                self.log(f"Cleared {count} cached packages for {backend}")
-            else:
-                cursor = conn.execute('DELETE FROM package_cache')
-                count = cursor.rowcount
-                self.log(f"Cleared {count} cached packages")
+        if not index_data:
+            return []
+        
+        package_ids = index_data.get('package_ids', [])
+        packages = []
+        
+        for pkg_id in package_ids:
+            pkg = self.get_package(pkg_id)
+            if pkg:
+                packages.append(pkg)
+        
+        return packages
     
-    def is_cache_valid(self, backend: str, max_age_hours: int = 24) -> bool:
+    def get_installed_packages(self) -> List[PackageData]:
+        """Get installed packages using index"""
+        index_key = f"installed:{self.backend}:1"
+        index_data = self.lmdb.get(self.indexes_db, index_key)
+        
+        if not index_data:
+            return []
+        
+        package_ids = index_data.get('package_ids', [])
+        packages = []
+        
+        for pkg_id in package_ids:
+            pkg = self.get_package(pkg_id)
+            if pkg:
+                packages.append(pkg)
+        
+        return packages
+    
+    def update_installed_status(self, package_id: str, is_installed: bool) -> bool:
+        """Update package installation status"""
+        pkg = self.get_package(package_id)
+        if not pkg:
+            return False
+        
+        pkg.is_installed = is_installed
+        pkg.last_updated = datetime.now().isoformat()
+        return self.add_package(pkg)
+    
+    def clear_cache(self):
+        """Clear all packages for this backend"""
+        self.lmdb.clear_db(self.db_name)
+        self._clear_backend_indexes()
+    
+    def is_cache_valid(self, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT 1 FROM package_cache 
-                WHERE backend = ? 
-                AND last_updated > datetime('now', ? || ' hours')
-                LIMIT 1
-            ''', (backend, f'-{max_age_hours}'))
-            
-            return cursor.fetchone() is not None
+        packages = self.get_all_packages(limit=1)
+        if not packages:
+            return False
+        
+        last_updated = datetime.fromisoformat(packages[0].last_updated)
+        age = datetime.now() - last_updated
+        return age < timedelta(hours=max_age_hours)
+    
+    def _update_indexes(self, package: PackageData):
+        """Update search indexes for package"""
+        # Section index
+        if package.section:
+            self._add_to_index('section', package.section, package.package_id)
+        
+        # Installed index
+        if package.is_installed:
+            self._add_to_index('installed', '1', package.package_id)
+    
+    def _add_to_index(self, index_type: str, value: str, package_id: str):
+        """Add package to index"""
+        index_key = f"{index_type}:{self.backend}:{value}"
+        index_data = self.lmdb.get(self.indexes_db, index_key)
+        
+        if index_data:
+            package_ids = index_data.get('package_ids', [])
+            if package_id not in package_ids:
+                package_ids.append(package_id)
+        else:
+            package_ids = [package_id]
+        
+        self.lmdb.put(self.indexes_db, index_key, {
+            'index_type': index_type,
+            'value': value,
+            'package_ids': package_ids
+        })
+    
+    def _remove_from_indexes(self, package: PackageData):
+        """Remove package from all indexes"""
+        if package.section:
+            self._remove_from_index('section', package.section, package.package_id)
+        
+        if package.is_installed:
+            self._remove_from_index('installed', '1', package.package_id)
+    
+    def _remove_from_index(self, index_type: str, value: str, package_id: str):
+        """Remove package from index"""
+        index_key = f"{index_type}:{self.backend}:{value}"
+        index_data = self.lmdb.get(self.indexes_db, index_key)
+        
+        if index_data:
+            package_ids = index_data.get('package_ids', [])
+            if package_id in package_ids:
+                package_ids.remove(package_id)
+                
+                if package_ids:
+                    self.lmdb.put(self.indexes_db, index_key, {
+                        'index_type': index_type,
+                        'value': value,
+                        'package_ids': package_ids
+                    })
+                else:
+                    self.lmdb.delete(self.indexes_db, index_key)
+    
+    def _clear_backend_indexes(self):
+        """Clear all indexes for this backend"""
+        db = self.lmdb.get_db(self.indexes_db)
+        prefix = f"{self.backend}:".encode()
+        
+        with self.lmdb.transaction(write=True) as txn:
+            cursor = txn.cursor(db=db)
+            if cursor.set_range(prefix):
+                keys_to_delete = []
+                for key, _ in cursor:
+                    if not key.startswith(prefix):
+                        break
+                    keys_to_delete.append(key)
+                
+                for key in keys_to_delete:
+                    txn.delete(key, db=db)

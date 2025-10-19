@@ -1,4 +1,3 @@
 PyQt6
 apt
-subprocess
-sys
+lmdb

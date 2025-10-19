@@ -63,3 +63,4 @@ Thumbs.db
 *.db
 *.log
 logs/
+data/

@@ -1,113 +1,85 @@
-from typing import Dict, List, Optional
-from models.category_model import CategoryModel, Category
+import json
+from typing import List, Optional
+from datetime import datetime, timedelta
+from cache.lmdb_manager import LMDBManager
+from cache.data_structures import CategoryData
 
-class CategoryCache:
-    """Model-based cache system for package categories from different packaging systems"""
+class CategoryCacheModel:
+    """Model for managing category cache in LMDB"""
     
-    def __init__(self, connection_manager, logging_service=None):
-        self.model = CategoryModel(connection_manager)
-        self.logger = logging_service.get_logger('cache.category') if logging_service else None
+    def __init__(self, lmdb_manager: LMDBManager, backend: str = 'apt'):
+        self.lmdb = lmdb_manager
+        self.backend = backend.lower()
+        self.db_name = f'categories_{self.backend}'
     
-    def log(self, message):
-        """Log message if logger is available"""
-        if self.logger:
-            self.logger.info(message)
+    def add_category(self, category: CategoryData) -> bool:
+        """Add or update category in cache"""
+        try:
+            self.lmdb.put(self.db_name, category.name, category.to_dict())
+            return True
+        except Exception:
+            return False
     
-    def get_categories(self, system: str) -> Optional[Dict]:
-        """Get cached categories for packaging system"""
-        if self.logger:
-            self.logger.debug(f"Getting categories for {system}")
-        if not self.is_cache_valid(system):
-            self.log(f"Category cache expired for {system}")
-            return None
-        
-        categories = self.model.get_by_backend(system)
-        if not categories:
-            self.log(f"No cached categories found for {system}")
-            return None
-        
-        self.log(f"Retrieved {len(categories)} cached categories for {system}")
-        
-        # Convert to hierarchical dict structure
-        result = {}
-        category_map = {cat.id: cat for cat in categories}
-        
-        for category in categories:
-            if category.parent_id is None:
-                # Root category
-                result[category.name] = category.package_count
-            else:
-                # Child category
-                parent = category_map.get(category.parent_id)
-                if parent:
-                    if parent.name not in result or not isinstance(result[parent.name], dict):
-                        result[parent.name] = {}
-                    result[parent.name][category.name] = category.package_count
-        
-        return result
+    def get_category(self, name: str) -> Optional[CategoryData]:
+        """Get category by name"""
+        data = self.lmdb.get(self.db_name, name)
+        return CategoryData.from_dict(data) if data else None
     
-    def set_categories(self, system: str, categories: Dict):
-        """Cache categories for packaging system"""
-        if self.logger:
-            self.logger.debug(f"Setting categories for {system}")
-        self.log(f"Caching {len(categories)} categories for {system}")
-        # Clear existing categories for this system
-        self.clear_cache(system)
+    def delete_category(self, name: str) -> bool:
+        """Delete category from cache"""
+        return self.lmdb.delete(self.db_name, name)
+    
+    def get_all_categories(self) -> List[CategoryData]:
+        """Get all categories"""
+        categories = []
+        db = self.lmdb.get_db(self.db_name)
         
-        # Insert new categories
-        for category_name, data in categories.items():
-            if isinstance(data, dict):
-                # Create parent category
-                parent = Category(
-                    backend=system,
-                    name=category_name,
-                    package_count=sum(data.values())
-                )
-                parent_id = self.model.create(parent)
-                
-                # Create child categories
-                for child_name, count in data.items():
-                    child = Category(
-                        backend=system,
-                        name=child_name,
-                        parent_id=parent_id,
-                        package_count=count
-                    )
-                    self.model.create(child)
-            else:
-                # Flat category
-                category = Category(
-                    backend=system,
-                    name=category_name,
-                    package_count=data
-                )
-                self.model.create(category)
+        with self.lmdb.transaction() as txn:
+            cursor = txn.cursor(db=db)
+            for key, value in cursor:
+                categories.append(CategoryData.from_dict(json.loads(value.decode())))
+        
+        return categories
     
-    def clear_cache(self, system: Optional[str] = None):
-        """Clear cache for specific system or all systems"""
-        if self.logger:
-            self.logger.debug(f"Clearing cache for {system or 'all systems'}")
-        if system:
-            categories = self.model.get_by_backend(system)
-            count = len([c for c in categories if c.parent_id is None])
-            for category in categories:
-                if category.parent_id is None:  # Only delete roots, children cascade
-                    self.model.delete(category.id)
-            self.log(f"Cleared {count} cached categories for {system}")
-        else:
-            # Clear all - delete all root categories (children cascade)
-            with self.model.conn_mgr.connection() as conn:
-                conn.execute('DELETE FROM category_cache WHERE parent_id IS NULL')
-            self.log("Cleared all cached categories")
+    def get_root_categories(self) -> List[CategoryData]:
+        """Get categories without parent"""
+        all_categories = self.get_all_categories()
+        return [cat for cat in all_categories if cat.parent is None]
     
-    def is_cache_valid(self, system: str, max_age_hours: int = 24) -> bool:
+    def get_subcategories(self, parent_name: str) -> List[CategoryData]:
+        """Get subcategories of a parent category"""
+        parent = self.get_category(parent_name)
+        if not parent or not parent.subcategories:
+            return []
+        
+        subcats = []
+        for subcat_name in parent.subcategories:
+            subcat = self.get_category(subcat_name)
+            if subcat:
+                subcats.append(subcat)
+        
+        return subcats
+    
+    def update_package_count(self, name: str, count: int) -> bool:
+        """Update package count for category"""
+        category = self.get_category(name)
+        if not category:
+            return False
+        
+        category.package_count = count
+        category.last_updated = datetime.now().isoformat()
+        return self.add_category(category)
+    
+    def clear_cache(self):
+        """Clear all categories for this backend"""
+        self.lmdb.clear_db(self.db_name)
+    
+    def is_cache_valid(self, max_age_hours: int = 24) -> bool:
         """Check if cache is still valid"""
-        with self.model.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT 1 FROM category_cache 
-                WHERE backend = ? 
-                AND datetime(last_updated) > datetime('now', '-{} hours')
-                LIMIT 1
-            '''.format(max_age_hours), (system,))
-            
-            return cursor.fetchone() is not None
+        categories = self.get_all_categories()
+        if not categories:
+            return False
+        
+        last_updated = datetime.fromisoformat(categories[0].last_updated)
+        age = datetime.now() - last_updated
+        return age < timedelta(hours=max_age_hours)

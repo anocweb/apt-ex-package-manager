@@ -13,11 +13,9 @@ class AppSettings:
         """Load default settings if not already set"""
         defaults = {
             'default_repository': 'apt',
-            'window_geometry': None,
-            'window_state': None,
             'sidebar_width': 220,
             'last_selected_page': 'home',
-            'repository_preferences': {},
+            'plugin_settings': {},
             'ui_theme': 'system',
             'file_logging_enabled': False,
             'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs'),
@@ -45,34 +43,23 @@ class AppSettings:
         """Set default repository type"""
         self.set('default_repository', repo_type)
     
-    def get_repository_preference(self, repo_type: str, key: str, default: Any = None) -> Any:
-        """Get repository-specific preference"""
-        prefs = self.get('repository_preferences', {})
-        return prefs.get(repo_type, {}).get(key, default)
+    def get_plugin_setting(self, backend_id: str, key: str, default: Any = None) -> Any:
+        """Get plugin-specific setting"""
+        plugin_settings = self.get('plugin_settings', {})
+        return plugin_settings.get(backend_id, {}).get(key, default)
     
-    def set_repository_preference(self, repo_type: str, key: str, value: Any):
-        """Set repository-specific preference"""
-        prefs = self.get('repository_preferences', {})
-        if repo_type not in prefs:
-            prefs[repo_type] = {}
-        prefs[repo_type][key] = value
-        self.set('repository_preferences', prefs)
+    def set_plugin_setting(self, backend_id: str, key: str, value: Any):
+        """Set plugin-specific setting"""
+        plugin_settings = self.get('plugin_settings', {})
+        if backend_id not in plugin_settings:
+            plugin_settings[backend_id] = {}
+        plugin_settings[backend_id][key] = value
+        self.set('plugin_settings', plugin_settings)
     
-    def get_window_geometry(self):
-        """Get saved window geometry"""
-        return self.get('window_geometry')
-    
-    def set_window_geometry(self, geometry):
-        """Save window geometry"""
-        self.set('window_geometry', geometry)
-    
-    def get_window_state(self):
-        """Get saved window state"""
-        return self.get('window_state')
-    
-    def set_window_state(self, state):
-        """Save window state"""
-        self.set('window_state', state)
+    def get_all_plugin_settings(self, backend_id: str) -> dict:
+        """Get all settings for a specific plugin"""
+        plugin_settings = self.get('plugin_settings', {})
+        return plugin_settings.get(backend_id, {})
     
     def get_sidebar_width(self) -> int:
         """Get sidebar width"""

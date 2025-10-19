@@ -1,15 +1,21 @@
 # Database Architecture for Apt-Ex Package Manager
 
-> **Status**: ACTIVELY IMPLEMENTING - Replacing SQLite with LMDB
-> **Current**: SQLite implementation in src/cache/
-> **Migration**: In progress
+> **Status**: IMPLEMENTED
+> **Current**: LMDB implementation in src/cache/
+> **Migration**: Complete - SQLite removed
 
 ## LMDB Database Structure
 
 ### Multi-Database Layout
 ```
-~/.cache/apt-ex-package-manager/
-└── cache.lmdb/
+# Development (running from source)
+apt-qt6-manager/data/cache.lmdb/
+
+# Production (installed)
+~/.local/share/apt-ex-package-manager/cache.lmdb/
+
+# Database structure:
+cache.lmdb/
     ├── packages_apt       # APT package metadata
     ├── packages_flatpak   # Flatpak package metadata
     ├── packages_appimage  # AppImage package metadata

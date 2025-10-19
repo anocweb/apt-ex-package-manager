@@ -1,94 +1,77 @@
-from typing import List, Optional, Dict
+from typing import List, Optional
 from dataclasses import dataclass
-from cache.connection_manager import SQLiteConnectionManager
+from cache import LMDBManager, CategoryCacheModel
+from cache.data_structures import CategoryData
 
 @dataclass
 class Category:
     """Category data model"""
-    id: Optional[int] = None
-    backend: str = ""
-    name: str = ""
-    parent_id: Optional[int] = None
+    name: str
+    backend: str = "apt"
+    parent: Optional[str] = None
     package_count: int = 0
     last_updated: Optional[str] = None
 
 class CategoryModel:
     """CRUD operations for category cache"""
     
-    def __init__(self, connection_manager: SQLiteConnectionManager):
-        self.conn_mgr = connection_manager
+    def __init__(self, lmdb_manager: LMDBManager, backend: str = 'apt'):
+        self.cache = CategoryCacheModel(lmdb_manager, backend)
+        self.backend = backend
     
-    def create(self, category: Category) -> int:
+    def create(self, category: Category) -> bool:
         """Create a new category"""
-        with self.conn_mgr.transaction('IMMEDIATE') as conn:
-            cursor = conn.execute('''
-                INSERT INTO category_cache (backend, name, parent_id, package_count)
-                VALUES (?, ?, ?, ?)
-            ''', (category.backend, category.name, category.parent_id, category.package_count))
-            return cursor.lastrowid
+        cat_data = CategoryData(
+            name=category.name,
+            parent=category.parent,
+            package_count=category.package_count
+        )
+        return self.cache.add_category(cat_data)
     
-    def read(self, category_id: int) -> Optional[Category]:
-        """Read a category by ID"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT id, backend, name, parent_id, package_count, last_updated
-                FROM category_cache WHERE id = ?
-            ''', (category_id,))
-            row = cursor.fetchone()
-            
-            if row:
-                return Category(*row)
-            return None
+    def read(self, name: str) -> Optional[Category]:
+        """Read a category by name"""
+        cat_data = self.cache.get_category(name)
+        if cat_data:
+            return Category(
+                name=cat_data.name,
+                backend=self.backend,
+                parent=cat_data.parent,
+                package_count=cat_data.package_count,
+                last_updated=cat_data.last_updated
+            )
+        return None
     
     def update(self, category: Category) -> bool:
         """Update an existing category"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                UPDATE category_cache 
-                SET backend = ?, name = ?, parent_id = ?, package_count = ?
-                WHERE id = ?
-            ''', (category.backend, category.name, category.parent_id, 
-                  category.package_count, category.id))
-            return cursor.rowcount > 0
+        cat_data = CategoryData(
+            name=category.name,
+            parent=category.parent,
+            package_count=category.package_count
+        )
+        return self.cache.add_category(cat_data)
     
-    def delete(self, category_id: int) -> bool:
-        """Delete a category and its children"""
-        with self.conn_mgr.transaction() as conn:
-            # Delete children first
-            conn.execute('DELETE FROM category_cache WHERE parent_id = ?', (category_id,))
-            # Delete the category
-            cursor = conn.execute('DELETE FROM category_cache WHERE id = ?', (category_id,))
-            return cursor.rowcount > 0
+    def delete(self, name: str) -> bool:
+        """Delete a category"""
+        return self.cache.delete_category(name)
     
     def get_by_backend(self, backend: str) -> List[Category]:
         """Get all categories for a backend"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT id, backend, name, parent_id, package_count, last_updated
-                FROM category_cache WHERE backend = ?
-                ORDER BY parent_id, name
-            ''', (backend,))
-            
-            return [Category(*row) for row in cursor.fetchall()]
-    
-    def get_children(self, parent_id: int) -> List[Category]:
-        """Get child categories of a parent"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT id, backend, name, parent_id, package_count, last_updated
-                FROM category_cache WHERE parent_id = ?
-                ORDER BY name
-            ''', (parent_id,))
-            
-            return [Category(*row) for row in cursor.fetchall()]
+        cat_list = self.cache.get_all_categories()
+        return [Category(
+            name=cat.name,
+            backend=backend,
+            parent=cat.parent,
+            package_count=cat.package_count,
+            last_updated=cat.last_updated
+        ) for cat in cat_list]
     
     def get_root_categories(self, backend: str) -> List[Category]:
         """Get root categories (no parent) for a backend"""
-        with self.conn_mgr.connection() as conn:
-            cursor = conn.execute('''
-                SELECT id, backend, name, parent_id, package_count, last_updated
-                FROM category_cache WHERE backend = ? AND parent_id IS NULL
-                ORDER BY name
-            ''', (backend,))
-            
-            return [Category(*row) for row in cursor.fetchall()]
+        cat_list = self.cache.get_root_categories()
+        return [Category(
+            name=cat.name,
+            backend=backend,
+            parent=cat.parent,
+            package_count=cat.package_count,
+            last_updated=cat.last_updated
+        ) for cat in cat_list]
