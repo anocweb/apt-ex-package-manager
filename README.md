@@ -97,4 +97,4 @@ This is an active side project. APT support is functional, with plugin architect
 Contributions are welcome! This is a personal project, but pull requests and issues are appreciated. Please check [STATUS.md](docs/STATUS.md) to see what's implemented vs. planned.
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
+This project is licensed under the GNU General Public License v3.0. See the LICENSE file for more details.
