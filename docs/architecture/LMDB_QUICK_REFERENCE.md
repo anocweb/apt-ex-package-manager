@@ -167,7 +167,7 @@ CategoryData(
 
 ### Development
 ```
-apt-qt6-manager/data/cache.lmdb/
+apt-ex-package-manager/data/cache.lmdb/
 ```
 
 ### Production

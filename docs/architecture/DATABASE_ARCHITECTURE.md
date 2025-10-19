@@ -9,7 +9,7 @@
 ### Multi-Database Layout
 ```
 # Development (running from source)
-apt-qt6-manager/data/cache.lmdb/
+apt-ex-package-manager/data/cache.lmdb/
 
 # Production (installed)
 ~/.local/share/apt-ex-package-manager/cache.lmdb/

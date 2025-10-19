@@ -13,21 +13,56 @@ apt-ex-package-manager
 ```
 
 ## Setup Instructions
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   cd apt-ex-package-manager
-   ```
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+### 1. Clone the repository
+```bash
+git clone https://github.com/anocweb/apt-ex-package-manager.git
+cd apt-ex-package-manager
+```
 
-3. Run the application:
-   ```
-   python src/main.py
-   ```
+### 2. Create a virtual environment (recommended)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Linux/macOS
+# or
+.venv\Scripts\activate  # On Windows
+```
+
+### 3. Install Python dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Install system packages (optional, backend-specific)
+
+**For APT backend (Debian/Ubuntu-based systems only)**:
+```bash
+sudo apt install python3-apt
+```
+Note: python-apt must be installed system-wide and cannot be installed via pip.
+
+**For Flatpak backend (when implemented)**:
+```bash
+sudo apt install flatpak  # Debian/Ubuntu
+# or
+sudo dnf install flatpak  # Fedora
+```
+
+### 5. Run the application
+```bash
+python src/main.py
+```
+
+### Development Mode
+Run with additional logging:
+```bash
+python src/main.py --dev-logging
+```
+
+## System Requirements
+- **Python**: 3.8 or higher
+- **Operating System**: Linux (KDE Plasma 6 recommended)
+- **Optional**: python3-apt (for APT backend on Debian/Ubuntu systems)
 
 ## Current Features
 - **APT Package Management**: Browse, search, install, and remove APT packages
@@ -36,6 +71,7 @@ apt-ex-package-manager
 - **LMDB Caching**: High-performance caching for quick package access
 - **KDE Plasma 6 Integration**: Native look and feel with system theme support
 - **Context Actions**: Dynamic header buttons for page-specific operations
+- **Plugin Architecture**: Extensible backend system for multiple package managers
 
 ## Planned Features
 - **Multi-Backend Plugin Architecture**: Extensible system for multiple package managers

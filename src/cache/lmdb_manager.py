@@ -50,7 +50,7 @@ class LMDBManager:
         src_dir = Path(__file__).parent.parent.parent
         data_dir = src_dir / 'data'
         
-        if src_dir.name == 'apt-qt6-manager' and (src_dir / 'src').exists():
+        if src_dir.name == 'apt-ex-package-manager' and (src_dir / 'src').exists():
             # Development mode
             data_dir.mkdir(exist_ok=True)
             return str(data_dir / 'cache.lmdb')

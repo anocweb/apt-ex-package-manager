@@ -12,7 +12,7 @@ This document describes the planned plugin architecture for adding new package m
 
 ### Directory Structure
 ```
-apt-qt6-manager/
+apt-ex-package-manager/
 ├── src/
 │   ├── controllers/
 │   │   ├── base_controller.py          # Abstract base class (NEW)

@@ -35,8 +35,8 @@ Read [STATUS.md](STATUS.md) to understand:
 
 #### 1. Setup Development Environment
 ```bash
-git clone <repository-url>
-cd apt-qt6-manager
+git clone https://github.com/anocweb/apt-ex-package-manager.git
+cd apt-ex-package-manager
 pip install -r requirements.txt
 ```
 

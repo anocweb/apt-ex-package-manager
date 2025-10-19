@@ -32,7 +32,7 @@ Complete replacement of SQLite with LMDB for the Apt-Ex Package Manager cache sy
 
 ### Development Mode
 ```
-apt-qt6-manager/data/cache.lmdb/
+apt-ex-package-manager/data/cache.lmdb/
 ```
 Automatically detected when running from source directory.
 

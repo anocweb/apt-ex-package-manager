@@ -1,3 +1,8 @@
-PyQt6
-apt
-lmdb
+# Core dependencies
+PyQt6>=6.0.0
+lmdb>=1.0.0
+
+# Optional backend dependencies
+# Note: python-apt must be installed system-wide via:
+#   sudo apt install python3-apt
+# It cannot be installed via pip and is only needed for APT backend

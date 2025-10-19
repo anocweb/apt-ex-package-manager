@@ -23,7 +23,7 @@ This document describes the migration from SQLite to LMDB for the Apt-Ex Package
 
 **Development Mode** (running from source):
 ```
-apt-qt6-manager/data/cache.lmdb/
+apt-ex-package-manager/data/cache.lmdb/
 ```
 
 **Production Mode** (installed):

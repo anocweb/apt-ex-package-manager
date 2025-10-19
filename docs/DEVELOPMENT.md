@@ -3,22 +3,50 @@
 ## Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- Qt6 development libraries
-- APT development headers (python3-apt)
-- LMDB library
+- **Python**: 3.8 or higher
+- **Operating System**: Linux (KDE Plasma 6 recommended)
+- **Optional**: python3-apt (for APT backend on Debian/Ubuntu systems)
 
 ### Setup
+
+#### 1. Clone repository
 ```bash
-# Clone repository
-git clone <repository-url>
-cd apt-qt6-manager
+git clone https://github.com/anocweb/apt-ex-package-manager.git
+cd apt-ex-package-manager
+```
 
-# Install dependencies
+#### 2. Create virtual environment (recommended)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+#### 3. Install Python dependencies
+```bash
 pip install -r requirements.txt
+```
 
-# Run application
+#### 4. Install system packages (optional, backend-specific)
+
+**For APT backend (Debian/Ubuntu only)**:
+```bash
+sudo apt install python3-apt
+```
+
+Note: python-apt must be installed system-wide. It cannot be installed via pip.
+
+**For Flatpak backend (when implemented)**:
+```bash
+sudo apt install flatpak  # Debian/Ubuntu
+sudo dnf install flatpak  # Fedora
+```
+
+#### 5. Run application
+```bash
 python src/main.py
+
+# With debug logging
+python src/main.py --dev-logging
 ```
 
 ## Project Structure
@@ -27,24 +55,37 @@ python src/main.py
 src/
 ├── main.py                 # Application entry point
 ├── controllers/            # Business logic
-│   ├── apt_controller.py   # APT operations
+│   ├── plugins/            # Backend plugins
+│   ├── apt_controller.py   # APT operations (legacy)
 │   └── package_manager.py  # Package management coordinator
 ├── views/                  # UI components
-│   └── main_view.py        # Main window
+│   ├── panels/             # Panel controllers
+│   │   ├── base_panel.py   # Base panel class
+│   │   ├── home_panel.py   # Home panel
+│   │   └── ...             # Other panels
+│   └── main_view.py        # Main window coordinator
+├── workers/                # Background threads
+│   ├── cache_update_worker.py
+│   ├── installed_packages_worker.py
+│   └── update_check_worker.py
 ├── models/                 # Data structures
 │   ├── package_model.py    # Package data classes
 │   ├── category_model.py   # Category CRUD
 │   └── package_cache_model.py # Cache CRUD
 ├── cache/                  # LMDB caching
-│   ├── database.py         # Database manager
-│   ├── cache_manager.py    # Cache coordinator
-│   └── connection_manager.py # Connection pooling
+│   ├── lmdb_manager.py     # Database manager
+│   └── package_cache.py    # Package cache
 ├── ui/                     # Qt Designer files
-│   ├── main_window.ui      # Main window layout
-│   └── *.ui                # Panel layouts
+│   ├── windows/            # Main window layouts
+│   ├── panels/             # Panel layouts
+│   └── widgets/            # Widget layouts
 ├── widgets/                # Custom widgets
+│   ├── base_list_item.py   # Base list item
+│   └── ...                 # Specific list items
 ├── services/               # Shared services
-│   └── logging_service.py  # Logging
+│   ├── logging_service.py  # Logging
+│   ├── status_service.py   # Status bar management
+│   └── odrs_service.py     # Ratings service
 └── settings/               # Configuration
     └── app_settings.py     # Settings management
 ```
@@ -63,17 +104,26 @@ User Action → View → Controller → APT/Cache → Model → View Update
 
 ### Key Components
 
-**APTController** (`src/controllers/apt_controller.py`)
-- Monolithic APT operations
-- Package search, install, remove
-- Category management
-- Cache integration
+**PackageManager** (`src/controllers/package_manager.py`)
+- Unified API for all backends
+- Plugin discovery and registration
+- Backend routing
+
+**Panel Controllers** (`src/views/panels/`)
+- Dedicated controller per panel
+- Inherit from BasePanel
+- Handle panel-specific logic
 
 **MainView** (`src/views/main_view.py`)
-- Main window with sidebar navigation
-- Panel management
-- Context actions
-- UI state management
+- Main window coordinator (~400 lines)
+- Panel navigation
+- Signal routing
+- Context actions display
+
+**Worker Threads** (`src/workers/`)
+- Background operations
+- Keep UI responsive
+- Signal-based communication
 
 **LMDB Cache** (`src/cache/`)
 - High-performance key-value storage
@@ -142,20 +192,30 @@ from models.package_model import Package
 
 ## Common Tasks
 
-### Adding a New UI Panel
-1. Create `.ui` file in `src/ui/`
-2. Load in MainView: `uic.loadUi('ui/panel.ui', widget)`
-3. Add to sidebar navigation
-4. Connect signals/slots
+### Adding a New Panel
+See [PANEL_DEVELOPMENT_GUIDE.md](developer/PANEL_DEVELOPMENT_GUIDE.md) for detailed instructions.
 
-### Adding a Method to APTController
-1. Add method with type hints and docstring
-2. Implement APT operations
-3. Add caching if appropriate
-4. Update views to use new method
+1. Create `.ui` file in `src/ui/panels/`
+2. Create panel controller inheriting from BasePanel
+3. Register in MainView.load_panels()
+4. Add sidebar button connection
+
+### Adding a Backend Plugin
+See [PLUGIN_ARCHITECTURE.md](architecture/PLUGIN_ARCHITECTURE.md) for details.
+
+1. Create plugin class inheriting from BasePackageController
+2. Implement required methods
+3. Place in `src/controllers/plugins/`
+4. Plugin auto-discovered on startup
+
+### Creating a Worker Thread
+1. Create class inheriting from QThread
+2. Define signals (finished_signal, error_signal, etc.)
+3. Implement run() method
+4. Place in `src/workers/`
 
 ### Modifying Cache Schema
-1. Update `src/cache/database.py`
+1. Update `src/cache/lmdb_manager.py`
 2. Update model classes in `src/models/`
 3. Test migration from old schema
 
@@ -200,25 +260,45 @@ logging_service.set_level(logging.DEBUG)
 - Run with sudo if permission issues
 - Check APT cache: `sudo apt update`
 
-## Planned Architecture
+## Current Architecture
 
-### Plugin System (Future)
-See [docs/architecture/PLUGIN_ARCHITECTURE.md](architecture/PLUGIN_ARCHITECTURE.md) for the planned plugin-based architecture that will replace the current monolithic APTController.
+### Plugin System (Implemented)
+See [PLUGIN_ARCHITECTURE.md](architecture/PLUGIN_ARCHITECTURE.md) for details.
 
-**Key Changes:**
-- `APTController` → `APTPlugin`
-- Plugin discovery and registration
-- Multi-backend support (Flatpak, AppImage)
-- Unified PackageManager interface
+**Status:**
+- ✅ BasePackageController interface
+- ✅ Plugin discovery and registration
+- ✅ APTPlugin (converted from APTController)
+- ✅ Unified PackageManager interface
+- 🔄 Flatpak plugin (stub created)
+- 📋 AppImage plugin (planned)
 
-**Timeline:** No specific timeline (side project)
+### View Architecture (Refactored)
+See [VIEW_ARCHITECTURE.md](architecture/VIEW_ARCHITECTURE.md) for details.
+
+**Status:**
+- ✅ Panel controller architecture
+- ✅ Worker thread system
+- ✅ Standardized widgets
+- ✅ Organized UI file structure
 
 ## Resources
 
+### Documentation
+- [INDEX.md](INDEX.md) - Complete documentation index
 - [STATUS.md](STATUS.md) - Implementation status
 - [FEATURES.md](features/FEATURES.md) - Feature specifications
 - [DESIGN_GUIDELINES.md](features/DESIGN_GUIDELINES.md) - UI guidelines
+
+### Developer Guides
+- [PANEL_DEVELOPMENT_GUIDE.md](developer/PANEL_DEVELOPMENT_GUIDE.md) - Creating panels
 - [AI_ASSISTED_DEVELOPMENT.md](developer/AI_ASSISTED_DEVELOPMENT.md) - Using AI tools
+- [MVC_QUICK_REFERENCE.md](developer/MVC_QUICK_REFERENCE.md) - MVC patterns
+
+### Architecture
+- [VIEW_ARCHITECTURE.md](architecture/VIEW_ARCHITECTURE.md) - View system
+- [PLUGIN_ARCHITECTURE.md](architecture/PLUGIN_ARCHITECTURE.md) - Plugin system
+- [DATABASE_ARCHITECTURE.md](architecture/DATABASE_ARCHITECTURE.md) - LMDB caching
 
 ## Getting Help
 
