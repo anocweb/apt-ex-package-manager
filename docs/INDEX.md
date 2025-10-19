@@ -31,6 +31,7 @@
 ## Planning
 - [MVC Refactor Plan](planning/main-py-mvc-refactor.md) - Original refactor plan
 - [MVC Refactor Completed](planning/mvc-refactor-completed.md) - Implementation summary
+- [MVC Refactor Final Summary](planning/MVC_REFACTOR_FINAL_SUMMARY.md) - Complete overview and metrics
 
 ## Examples
 - [Plugin Example](examples/PLUGIN_EXAMPLE.md) - Reference plugin implementation
