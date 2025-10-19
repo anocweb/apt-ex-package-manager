@@ -1,5 +1,7 @@
 # Installation Guide
 
+> **⚠️ PRE-ALPHA SOFTWARE**: This application is in early development and not ready for production use. Installation is not recommended at this time. Use the development mode below for testing only.
+
 ## Prerequisites
 
 - **Python**: 3.8 or higher

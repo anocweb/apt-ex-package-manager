@@ -1,5 +1,7 @@
 # Apt-Ex Package Manager
 
+> **⚠️ PRE-ALPHA SOFTWARE**: This project is in early development. Features are incomplete and the application is not ready for production use. Use at your own risk for testing purposes only.
+
 ## Overview
 Apt-Ex Package Manager is a modern user interface application designed to facilitate the management of the Advanced Package Tool (APT) on Linux systems. This application provides an intuitive graphical interface for users to install, remove, and update packages seamlessly.
 
