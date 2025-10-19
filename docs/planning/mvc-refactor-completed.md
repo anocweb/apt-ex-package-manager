@@ -89,11 +89,13 @@ def main():
 - ✓ `src/config/__init__.py`
 - ✓ `src/config/app_config.py`
 - ✓ `src/services/theme_service.py`
+- ✓ `src/services/service_container.py`
 - ✓ `src/controllers/application_controller.py`
 
 ## Files Modified
 - ✓ `src/main.py` (simplified from 67 to 20 lines)
 - ✓ `src/views/main_view.py` (added dev mode methods)
+- ✓ `src/controllers/application_controller.py` (updated to use ServiceContainer)
 
 ## Benefits Achieved
 
@@ -183,26 +185,57 @@ main.py (20 lines)
 ### New Dependencies
 - None - uses existing PyQt6 and standard library
 
-## Next Steps (Optional Enhancements)
+## Phase 5: Service Container ✓
 
-### Priority 2 (Not Implemented)
-1. **ServiceContainer** (`src/services/service_container.py`)
-   - Centralized service registry
-   - Easier testing with mock services
-   - Clearer service dependencies
+#### ServiceContainer (`src/services/service_container.py`)
+- **Purpose**: Centralized service registry for dependency injection
+- **Features**:
+  - Register services by name
+  - Retrieve services with error handling
+  - Check service existence
+  - Optional service retrieval
+  - Clear all services
+- **Methods**:
+  - `register(name, service)`: Register a service
+  - `get(name)`: Get service (raises KeyError if not found)
+  - `has(name)`: Check if service exists
+  - `get_optional(name)`: Get service or None
+  - `clear()`: Clear all services
 
-2. **ViewFactory** (`src/factories/view_factory.py`)
-   - Consistent view creation
-   - Easier to add new views
-   - Testable view construction
+#### ApplicationController Updates
+- **Changed**: `self.services = {}` → `self.container = ServiceContainer()`
+- **Benefits**:
+  - Better error messages
+  - Clearer API
+  - Easier testing with mock services
+  - Type-safe service access
+
+## Optional Enhancements (Not Implemented)
+
+### ViewFactory (Skipped)
+- **Reason**: Not needed for current architecture
+- **Alternative**: Direct view creation in ApplicationController works well
 
 ## Conclusion
 
-The MVC refactor successfully achieved all primary goals:
+The MVC refactor successfully achieved all goals:
 - ✓ Pure bootstrap entry point with minimal logic
 - ✓ Testable, reusable service components
 - ✓ Clear separation of concerns
-- ✓ Proper dependency injection
+- ✓ Proper dependency injection with ServiceContainer
 - ✓ Centralized application lifecycle management
+- ✓ Centralized service registry
 
 The codebase is now more maintainable, testable, and follows SOLID principles while maintaining full backward compatibility.
+
+### Final Architecture
+```
+main.py (20 lines)
+  └─> ApplicationController
+      ├─> ServiceContainer
+      │   ├─> ThemeService
+      │   ├─> LoggingService
+      │   ├─> LMDBManager
+      │   └─> PackageManager
+      └─> MainView (with injected services)
+```

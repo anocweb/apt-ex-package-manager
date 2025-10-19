@@ -68,7 +68,31 @@ class ThemeService:
         return "/* light theme styles */"
 ```
 
-### 3. ApplicationController (`src/controllers/application_controller.py`)
+### 3. ServiceContainer (`src/services/service_container.py`)
+**Purpose**: Centralized service registry
+
+```python
+from services.service_container import ServiceContainer
+
+# Create container
+container = ServiceContainer()
+
+# Register services
+container.register('logging', logging_service)
+container.register('lmdb', lmdb_manager)
+
+# Retrieve services
+logging_service = container.get('logging')
+
+# Check if service exists
+if container.has('theme'):
+    theme_service = container.get('theme')
+
+# Get optional service
+optional = container.get_optional('optional_service')
+```
+
+### 4. ApplicationController (`src/controllers/application_controller.py`)
 **Purpose**: Application lifecycle management
 
 ```python
@@ -92,14 +116,14 @@ app_controller.cleanup()
 def _initialize_services(self) -> None:
     # Existing services
     logging_service = LoggingService(...)
-    self.services['logging'] = logging_service
+    self.container.register('logging', logging_service)
     
     # Add new service
     new_service = NewService(logging_service)
-    self.services['new_service'] = new_service
+    self.container.register('new_service', new_service)
 ```
 
-### 4. MainView (`src/views/main_view.py`)
+### 5. MainView (`src/views/main_view.py`)
 **Purpose**: Main application window
 
 ```python
@@ -165,18 +189,18 @@ def _initialize_services(self) -> None:
     
     # Add new service
     from services.new_service import NewService
-    new_service = NewService(self.services['logging'])
-    self.services['new_service'] = new_service
+    new_service = NewService(self.container.get('logging'))
+    self.container.register('new_service', new_service)
 ```
 
 3. **Inject into Views**:
 ```python
 def _create_main_view(self) -> None:
     self.main_view = MainView(
-        self.services['package_manager'],
-        self.services['lmdb'],
-        logging_service=self.services['logging'],
-        new_service=self.services['new_service'],  # Add here
+        self.container.get('package_manager'),
+        self.container.get('lmdb'),
+        logging_service=self.container.get('logging'),
+        new_service=self.container.get('new_service'),  # Add here
         dev_logging=self.config.dev_logging,
         stdout_log_level=self.config.stdout_log_level
     )
@@ -234,6 +258,24 @@ def test_parse_arguments():
     assert config.dev_logging == True
 ```
 
+### Testing ServiceContainer
+```python
+# tests/test_service_container.py
+from services.service_container import ServiceContainer
+
+def test_register_and_get():
+    container = ServiceContainer()
+    service = MockService()
+    container.register('test', service)
+    assert container.get('test') == service
+
+def test_has_service():
+    container = ServiceContainer()
+    container.register('test', MockService())
+    assert container.has('test') == True
+    assert container.has('missing') == False
+```
+
 ### Testing ThemeService
 ```python
 # tests/test_theme_service.py
@@ -271,7 +313,18 @@ def test_initialization():
             with patch.object(controller, '_create_main_view'):
                 controller.initialize()
                 
-    assert 'theme' in controller.services
+    assert controller.container.has('theme')
+
+def test_with_mock_services():
+    container = ServiceContainer()
+    container.register('logging', MockLoggingService())
+    container.register('lmdb', MockLMDBManager())
+    
+    controller = ApplicationController(mock_app, config)
+    controller.container = container  # Inject mock container
+    controller._create_main_view()
+    
+    assert controller.main_view is not None
 ```
 
 ## Debugging

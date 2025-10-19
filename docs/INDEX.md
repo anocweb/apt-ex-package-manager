@@ -17,6 +17,7 @@
 - [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB implementation (migrating from SQLite)
 - [Caching System](architecture/CACHING_SYSTEM.md) - Cache strategy
 - [MVC Refactor Architecture](architecture/MVC_REFACTOR_ARCHITECTURE.md) - Application controller and service architecture
+- [Service Container](architecture/SERVICE_CONTAINER.md) - Centralized service registry and dependency injection
 - [Plugin Architecture](architecture/PLUGIN_ARCHITECTURE.md) - Planned plugin system
 - [Data Structures](architecture/DATA_STRUCTURES.md) - Data models for future plugins
 - [Repository Implementation](architecture/REPOSITORY_IMPLEMENTATION.md) - Repository management

@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QApplication
 from config.app_config import AppConfig
+from services.service_container import ServiceContainer
 from services.theme_service import ThemeService
 from services.logging_service import LoggingService
 from cache import LMDBManager
@@ -12,7 +13,7 @@ class ApplicationController:
     def __init__(self, app: QApplication, config: AppConfig):
         self.app = app
         self.config = config
-        self.services = {}
+        self.container = ServiceContainer()
         self.main_view = None
     
     def initialize(self) -> None:
@@ -26,28 +27,28 @@ class ApplicationController:
         """Set up theme service and application icon"""
         theme_service = ThemeService(self.app)
         theme_service.setup_application_icon()
-        self.services['theme'] = theme_service
+        self.container.register('theme', theme_service)
     
     def _initialize_services(self) -> None:
         """Initialize core services"""
         # Logging service
         logging_service = LoggingService(stdout_log_level=self.config.stdout_log_level)
-        self.services['logging'] = logging_service
+        self.container.register('logging', logging_service)
         
         # LMDB manager
         lmdb_manager = LMDBManager(logging_service=logging_service)
-        self.services['lmdb'] = lmdb_manager
+        self.container.register('lmdb', lmdb_manager)
         
         # Package manager
         package_manager = PackageManager(lmdb_manager, logging_service)
-        self.services['package_manager'] = package_manager
+        self.container.register('package_manager', package_manager)
     
     def _create_main_view(self) -> None:
         """Create main view with dependency injection"""
         self.main_view = MainView(
-            self.services['package_manager'],
-            self.services['lmdb'],
-            logging_service=self.services['logging'],
+            self.container.get('package_manager'),
+            self.container.get('lmdb'),
+            logging_service=self.container.get('logging'),
             dev_logging=self.config.dev_logging,
             stdout_log_level=self.config.stdout_log_level
         )
@@ -64,5 +65,5 @@ class ApplicationController:
     
     def cleanup(self) -> None:
         """Clean up resources on application exit"""
-        if 'lmdb' in self.services:
-            self.services['lmdb'].close()
+        if self.container.has('lmdb'):
+            self.container.get('lmdb').close()
