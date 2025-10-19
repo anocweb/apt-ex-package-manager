@@ -1,8 +1,12 @@
 # Plugin Architecture for Backend Package Managers
 
+> **Status**: PLANNED - Design specification for future implementation
+> **Current**: APT controller is monolithic (src/controllers/apt_controller.py)
+> **Timeline**: No specific timeline
+
 ## Overview
 
-This document describes the plugin architecture for adding new package management backends (APT, Flatpak, Snap, AppImage, etc.) to Apt-Ex Package Manager without modifying core code.
+This document describes the planned plugin architecture for adding new package management backends (APT, Flatpak, Snap, AppImage, etc.) to Apt-Ex Package Manager without modifying core code. This is a design specification that will require refactoring the current APT implementation.
 
 ## End Goal Architecture
 

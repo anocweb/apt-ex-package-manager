@@ -17,21 +17,20 @@
 - **Theme Integration**: KDE Plasma 6 system colors via QPalette
 
 ### Package Backend Integration
-- **apt**: Python APT library for Debian/Ubuntu packages
-- **flatpak**: Flatpak system integration via subprocess
-- **appimage**: AppImage file management and integration
-- **subprocess**: System command execution for all backends
-- **sqlite3**: SQLite database for caching and persistence
+- **apt**: Python APT library for Debian/Ubuntu packages (current)
+- **flatpak**: Flatpak system integration via subprocess (planned)
+- **appimage**: AppImage file management and integration (planned)
+- **subprocess**: System command execution
+- **lmdb**: LMDB database for caching (migrating from SQLite)
 
 ### Complete Dependency List
 ```
 PyQt6
 apt
-sqlite3   # Database for caching (built-in)
+lmdb      # Database for caching (migrating from sqlite3)
 subprocess
 sys
-requests  # For AppImage metadata and updates
-os        # File system operations for AppImage
+os        # File system operations
 pathlib   # Path handling for cache directories
 dataclasses # Type-safe data models
 typing    # Type hints and annotations
@@ -77,7 +76,7 @@ designer src/ui/main_window.ui
 - **Threading**: Asynchronous operations to prevent UI freezing
 - **Process Management**: Safe subprocess execution for APT commands
 - **File System**: Configuration storage in `~/.config/apt-ex-package-manager/`
-- **Database**: SQLite cache in `~/.cache/apt-ex-package-manager/cache.db`
+- **Database**: LMDB cache in `~/.cache/apt-ex-package-manager/cache.lmdb/` (migrating from SQLite)
 - **Caching**: 24-hour TTL with automatic validation and refresh
 
 ### Security Technologies
@@ -92,20 +91,18 @@ designer src/ui/main_window.ui
 - **Target Platform**: Linux systems (APT-based distributions preferred)
 - **Desktop Environment**: Optimized for KDE Plasma 6
 - **Compatibility**: Works with other desktop environments
-- **Package Systems**: APT (required), Flatpak (optional), AppImage (optional)
+- **Package Systems**: APT (current), Flatpak (planned), AppImage (planned)
 
 ### System Dependencies
 - APT package management system (required)
-- Flatpak runtime (optional, for Flatpak support)
 - Qt6 runtime libraries
 - Python 3.8+ runtime
-- Desktop notification system (optional)
-- File manager integration for AppImage
+- LMDB library
 
 ### Integration Features
 - KDE Breeze icon theme support
 - System color scheme integration
 - Desktop file associations
 - Command-line interface compatibility
-- SQLite database for offline functionality
+- LMDB database for offline functionality
 - Persistent caching across application restarts

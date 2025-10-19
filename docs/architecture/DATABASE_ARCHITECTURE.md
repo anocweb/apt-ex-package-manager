@@ -1,6 +1,10 @@
-# LMDB Architecture for Apt-Ex Package Manager
+# Database Architecture for Apt-Ex Package Manager
 
-## Database Structure
+> **Status**: ACTIVELY IMPLEMENTING - Replacing SQLite with LMDB
+> **Current**: SQLite implementation in src/cache/
+> **Migration**: In progress
+
+## LMDB Database Structure
 
 ### Multi-Database Layout
 ```

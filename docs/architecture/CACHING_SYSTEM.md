@@ -1,7 +1,10 @@
 # Caching System
 
+> **Status**: MIGRATING from SQLite to LMDB
+> **See**: [Database Architecture](DATABASE_ARCHITECTURE.md) for LMDB implementation details
+
 ## Overview
-The caching system provides fast access to package data and categories by storing frequently accessed information in a local SQLite database.
+The caching system provides fast access to package data and categories by storing frequently accessed information in a local database. Currently migrating from SQLite to LMDB for improved performance.
 
 ## Cache Components
 
@@ -82,8 +85,8 @@ categories = cache.get_categories('apt')  # Returns None if expired
 - **Reduced Load**: Fewer system calls to package managers
 
 ### Resource Efficiency
-- **Memory**: Minimal RAM usage with SQLite
-- **Disk**: Compressed storage with indexing
+- **Memory**: Memory-mapped storage (LMDB) for efficient access
+- **Disk**: Compact key-value storage with indexing
 - **Network**: Reduced API calls to remote sources
 
 ## Cache Maintenance

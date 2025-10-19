@@ -29,20 +29,34 @@ apt-ex-package-manager
    python src/main.py
    ```
 
-## Features
-- **Package Management**: Easily install, remove, and update packages using a user-friendly interface.
-- **Real-time Updates**: View package information and updates in real-time.
-- **Intuitive UI**: Designed with user experience in mind, making package management accessible to all users.
+## Current Features
+- **APT Package Management**: Browse, search, install, and remove APT packages
+- **Category Browsing**: Navigate packages by APT sections (games, development, etc.)
+- **Package Search**: Fast search across package names and descriptions
+- **LMDB Caching**: High-performance caching for quick package access
+- **KDE Plasma 6 Integration**: Native look and feel with system theme support
+- **Context Actions**: Dynamic header buttons for page-specific operations
+
+## Planned Features
+- **Multi-Backend Plugin Architecture**: Extensible system for multiple package managers
+- **Flatpak Support**: Install and manage Flatpak applications
+- **AppImage Support**: Manage portable AppImage applications
+- **Unified Search**: Search across all package backends simultaneously
+- **Repository Management**: GUI for managing APT sources and Flatpak remotes
 
 ## Documentation
-- [Feature Requirements](docs/FEATURES.md) - Detailed APT functionality specifications
-- [Design Guidelines](docs/DESIGN_GUIDELINES.md) - KDE Plasma 6 integration guidelines
-- [Plugin Architecture](docs/PLUGIN_ARCHITECTURE.md) - Backend plugin system design and implementation
-- [Plugin Example](docs/PLUGIN_EXAMPLE.md) - Complete example of creating a backend plugin
-- [Data Structures](docs/DATA_STRUCTURES.md) - Required data structures and contracts for plugins
+- [Implementation Status](docs/STATUS.md) - What's working vs. planned
+- [Documentation Index](docs/INDEX.md) - Complete documentation navigation
+- [Feature Requirements](docs/features/FEATURES.md) - Feature specifications
+- [Design Guidelines](docs/features/DESIGN_GUIDELINES.md) - KDE Plasma 6 integration
+- [Database Architecture](docs/architecture/DATABASE_ARCHITECTURE.md) - LMDB caching system
+- [AI-Assisted Development](docs/developer/AI_ASSISTED_DEVELOPMENT.md) - Guide for using AI tools
+
+## Development Status
+This is an active side project. APT support is functional, with plugin architecture and additional backends planned for future development. See [STATUS.md](docs/STATUS.md) for details.
 
 ## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+Contributions are welcome! This is a personal project, but pull requests and issues are appreciated. Please check [STATUS.md](docs/STATUS.md) to see what's implemented vs. planned.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.

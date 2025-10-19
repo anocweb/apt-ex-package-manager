@@ -1,5 +1,9 @@
 # Data Structures and Contracts
 
+> **Status**: SPECIFICATION for planned plugin system
+> **Current**: APT controller uses apt.Package objects directly
+> **Note**: These structures will be implemented when plugin architecture is developed
+
 ## Overview
 
 This document defines the required data structures that all backend plugins must use when returning data to the application. These structures ensure consistent UI rendering and type safety across all backends.
