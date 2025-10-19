@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'category_panel.ui'
+# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/panels/category_panel.ui'
 #
 # Created by: PyQt6 UI code generator 6.9.1
 #

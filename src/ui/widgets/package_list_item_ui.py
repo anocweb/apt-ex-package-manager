@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/installed_list_item.ui'
+# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/widgets/package_list_item.ui'
 #
 # Created by: PyQt6 UI code generator 6.9.1
 #
@@ -9,15 +9,15 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 
-class Ui_InstalledListItem(object):
-    def setupUi(self, InstalledListItem):
-        InstalledListItem.setObjectName("InstalledListItem")
-        InstalledListItem.resize(714, 125)
-        InstalledListItem.setFrameShape(QtWidgets.QFrame.Shape.Box)
-        self.mainLayout = QtWidgets.QHBoxLayout(InstalledListItem)
+class Ui_PackageListItem(object):
+    def setupUi(self, PackageListItem):
+        PackageListItem.setObjectName("PackageListItem")
+        PackageListItem.resize(714, 125)
+        PackageListItem.setFrameShape(QtWidgets.QFrame.Shape.Box)
+        self.mainLayout = QtWidgets.QHBoxLayout(PackageListItem)
         self.mainLayout.setSpacing(12)
         self.mainLayout.setObjectName("mainLayout")
-        self.iconLabel = QtWidgets.QLabel(parent=InstalledListItem)
+        self.iconLabel = QtWidgets.QLabel(parent=PackageListItem)
         self.iconLabel.setMinimumSize(QtCore.QSize(64, 64))
         self.iconLabel.setMaximumSize(QtCore.QSize(64, 64))
         font = QtGui.QFont()
@@ -31,7 +31,7 @@ class Ui_InstalledListItem(object):
         self.contentLayout.setContentsMargins(2, 2, 2, 2)
         self.contentLayout.setSpacing(0)
         self.contentLayout.setObjectName("contentLayout")
-        self.nameLabel = QtWidgets.QLabel(parent=InstalledListItem)
+        self.nameLabel = QtWidgets.QLabel(parent=PackageListItem)
         self.nameLabel.setMinimumSize(QtCore.QSize(0, 30))
         font = QtGui.QFont()
         font.setPointSize(18)
@@ -40,7 +40,7 @@ class Ui_InstalledListItem(object):
         self.nameLabel.setStyleSheet("color: palette(window-text); background: transparent; border: none; padding: 0px;")
         self.nameLabel.setObjectName("nameLabel")
         self.contentLayout.addWidget(self.nameLabel, 0, QtCore.Qt.AlignmentFlag.AlignLeft|QtCore.Qt.AlignmentFlag.AlignTop)
-        self.descLabel = QtWidgets.QLabel(parent=InstalledListItem)
+        self.descLabel = QtWidgets.QLabel(parent=PackageListItem)
         self.descLabel.setMinimumSize(QtCore.QSize(0, 30))
         self.descLabel.setMaximumSize(QtCore.QSize(16777215, 30))
         font = QtGui.QFont()
@@ -51,20 +51,20 @@ class Ui_InstalledListItem(object):
         self.descLabel.setWordWrap(True)
         self.descLabel.setObjectName("descLabel")
         self.contentLayout.addWidget(self.descLabel, 0, QtCore.Qt.AlignmentFlag.AlignTop)
-        self.infoLabel = QtWidgets.QLabel(parent=InstalledListItem)
-        self.infoLabel.setMinimumSize(QtCore.QSize(0, 30))
+        self.ratingLabel = QtWidgets.QLabel(parent=PackageListItem)
+        self.ratingLabel.setMinimumSize(QtCore.QSize(0, 30))
         font = QtGui.QFont()
         font.setPointSize(10)
-        self.infoLabel.setFont(font)
-        self.infoLabel.setStyleSheet("background: transparent; border: none; padding: 0px;")
-        self.infoLabel.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self.infoLabel.setObjectName("infoLabel")
-        self.contentLayout.addWidget(self.infoLabel, 0, QtCore.Qt.AlignmentFlag.AlignLeft|QtCore.Qt.AlignmentFlag.AlignBottom)
+        self.ratingLabel.setFont(font)
+        self.ratingLabel.setStyleSheet("background: transparent; border: none; padding: 0px;")
+        self.ratingLabel.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        self.ratingLabel.setObjectName("ratingLabel")
+        self.contentLayout.addWidget(self.ratingLabel, 0, QtCore.Qt.AlignmentFlag.AlignLeft|QtCore.Qt.AlignmentFlag.AlignBottom)
         self.mainLayout.addLayout(self.contentLayout)
         self.rightLayout = QtWidgets.QVBoxLayout()
         self.rightLayout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetMaximumSize)
         self.rightLayout.setObjectName("rightLayout")
-        self.backendLabel = QtWidgets.QLabel(parent=InstalledListItem)
+        self.backendLabel = QtWidgets.QLabel(parent=PackageListItem)
         font = QtGui.QFont()
         font.setPointSize(10)
         self.backendLabel.setFont(font)
@@ -74,33 +74,34 @@ class Ui_InstalledListItem(object):
         self.rightLayout.addWidget(self.backendLabel)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.rightLayout.addItem(spacerItem)
-        self.removeButton = QtWidgets.QPushButton(parent=InstalledListItem)
-        self.removeButton.setMinimumSize(QtCore.QSize(80, 32))
-        self.removeButton.setMaximumSize(QtCore.QSize(80, 32))
+        self.installButton = QtWidgets.QPushButton(parent=PackageListItem)
+        self.installButton.setMinimumSize(QtCore.QSize(80, 32))
+        self.installButton.setMaximumSize(QtCore.QSize(80, 32))
         font = QtGui.QFont()
         font.setBold(True)
-        self.removeButton.setFont(font)
-        self.removeButton.setStyleSheet("QPushButton {\n"
-"    background-color: #FF6B6B;\n"
-"    color: white;\n"
+        self.installButton.setFont(font)
+        self.installButton.setStyleSheet("QPushButton {\n"
+"    background-color: palette(highlight);\n"
+"    color: palette(highlighted-text);\n"
 "    border: none;\n"
 "    border-radius: 6px;\n"
 "}\n"
 "QPushButton:hover {\n"
-"    background-color: #FF5252;\n"
+"    background-color: palette(dark);\n"
 "}")
-        self.removeButton.setObjectName("removeButton")
-        self.rightLayout.addWidget(self.removeButton)
+        self.installButton.setObjectName("installButton")
+        self.rightLayout.addWidget(self.installButton)
         self.mainLayout.addLayout(self.rightLayout)
 
-        self.retranslateUi(InstalledListItem)
-        QtCore.QMetaObject.connectSlotsByName(InstalledListItem)
+        self.retranslateUi(PackageListItem)
+        QtCore.QMetaObject.connectSlotsByName(PackageListItem)
 
-    def retranslateUi(self, InstalledListItem):
+    def retranslateUi(self, PackageListItem):
         _translate = QtCore.QCoreApplication.translate
-        self.iconLabel.setText(_translate("InstalledListItem", "📦"))
-        self.nameLabel.setText(_translate("InstalledListItem", "Package Name"))
-        self.descLabel.setText(_translate("InstalledListItem", "Package description text that may wrap to multiple lines"))
-        self.infoLabel.setText(_translate("InstalledListItem", "Version 1.0.0 • 50 MB"))
-        self.backendLabel.setText(_translate("InstalledListItem", "APT"))
-        self.removeButton.setText(_translate("InstalledListItem", "🗑 Remove"))
+        PackageListItem.setProperty("PackageId", _translate("PackageListItem", "com.package.name"))
+        self.iconLabel.setText(_translate("PackageListItem", "📦"))
+        self.nameLabel.setText(_translate("PackageListItem", "Package Name"))
+        self.descLabel.setText(_translate("PackageListItem", "Package description text that may wrap to multiple lines"))
+        self.ratingLabel.setText(_translate("PackageListItem", "★★★★☆ 4.2 (123 reviews)"))
+        self.backendLabel.setText(_translate("PackageListItem", "APT"))
+        self.installButton.setText(_translate("PackageListItem", "⬇ Install"))

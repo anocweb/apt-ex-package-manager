@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/settings_panel.ui'
+# Form implementation generated from reading ui file '/home/anocweb/Source/apt-qt6-manager/src/ui/panels/settings_panel.ui'
 #
 # Created by: PyQt6 UI code generator 6.9.1
 #

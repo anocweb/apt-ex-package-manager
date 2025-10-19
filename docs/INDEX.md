@@ -14,6 +14,7 @@
 - [APT Section Mapping](features/APT_SECTION_MAPPING.md) - Category mapping
 
 ## Architecture
+- [View Architecture](architecture/VIEW_ARCHITECTURE.md) - Panel controllers and worker threads
 - [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB implementation (migrating from SQLite)
 - [Caching System](architecture/CACHING_SYSTEM.md) - Cache strategy
 - [MVC Refactor Architecture](architecture/MVC_REFACTOR_ARCHITECTURE.md) - Application controller and service architecture
@@ -23,15 +24,19 @@
 - [Repository Implementation](architecture/REPOSITORY_IMPLEMENTATION.md) - Repository management
 
 ## Developer Guides
+- [Panel Development Guide](developer/PANEL_DEVELOPMENT_GUIDE.md) - Creating new panels
 - [AI-Assisted Development](developer/AI_ASSISTED_DEVELOPMENT.md) - Using AI tools
 - [MVC Quick Reference](developer/MVC_QUICK_REFERENCE.md) - Working with MVC architecture
 - [Action Plan](developer/DOCUMENTATION_ACTION_PLAN.md) - Documentation tasks
-- [Review Suggestions](developer/DOCUMENTATION_REVIEW_SUGGESTIONS.md) - Improvement ideas
 
 ## Planning
 - [MVC Refactor Plan](planning/main-py-mvc-refactor.md) - Original refactor plan
 - [MVC Refactor Completed](planning/mvc-refactor-completed.md) - Implementation summary
 - [MVC Refactor Final Summary](planning/MVC_REFACTOR_FINAL_SUMMARY.md) - Complete overview and metrics
+
+## Refactoring
+- [Refactoring Summary](REFACTORING_SUMMARY.md) - View architecture refactoring
+- [Widget Standardization](WIDGET_STANDARDIZATION.md) - List item widget improvements
 
 ## Examples
 - [Plugin Example](examples/PLUGIN_EXAMPLE.md) - Reference plugin implementation

@@ -1,84 +1,35 @@
-from PyQt6.QtWidgets import QFrame
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6 import uic
+from PyQt6.QtCore import pyqtSignal
+from widgets.base_list_item import BaseListItem
 from services.odrs_service import ODRSService
 
-class PackageListItem(QFrame):
+
+class PackageListItem(BaseListItem):
     """Reusable KDE Discover-style package list item widget"""
     
-    install_requested = pyqtSignal(str)  # Emits package name when install is clicked
+    install_requested = pyqtSignal(str)
     
     def __init__(self, package, odrs_service=None, parent=None):
-        super().__init__(parent)
         self.package = package
         self.odrs_service = odrs_service or ODRSService()
-        uic.loadUi('src/ui/package_list_item.ui', self)
+        super().__init__('src/ui/widgets/package_list_item.ui', parent)
         self.setup_ui()
     
     def setup_ui(self):
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        
-        # Check if dev outline is active
-        from PyQt6.QtWidgets import QApplication
-        app_stylesheet = QApplication.instance().styleSheet()
-        dev_outline = "border: 1px solid red" in app_stylesheet
-        
-        if dev_outline:
-            self.setStyleSheet("""
-                QFrame {
-                    background-color: palette(base);
-                    border: 1px solid red;
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin: 4px;
-                }
-                QFrame:hover {
-                    background-color: palette(alternate-base);
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QFrame {
-                    background-color: palette(base);
-                    border: 1px solid palette(mid);
-                    border-radius: 8px;
-                    padding: 8px;
-                    margin: 4px;
-                }
-                QFrame:hover {
-                    background-color: palette(alternate-base);
-                }
-            """)
-        
+        """Setup package-specific UI"""
         # Set package data
-        name = getattr(self.package, 'name', 'Unknown Package')
-        self.nameLabel.setText(name)
-        
-        description = getattr(self.package, 'description', 'No description available')
-        self.descLabel.setText(description)
-        
-        backend = getattr(self.package, 'backend', 'apt')
-        self.backendLabel.setText(backend.upper())
+        self.nameLabel.setText(getattr(self.package, 'name', 'Unknown Package'))
+        self.descLabel.setText(getattr(self.package, 'description', 'No description available'))
+        self.backendLabel.setText(getattr(self.package, 'backend', 'apt').upper())
         
         # Connect install button
-        package_name = getattr(self.package, 'name', '')
-        self.installButton.clicked.connect(lambda: self.install_requested.emit(package_name))
+        self.installButton.clicked.connect(lambda: self.install_requested.emit(getattr(self.package, 'name', '')))
         
-        # Apply dev outline if active
-        if dev_outline:
-            self.iconLabel.setStyleSheet(self.iconLabel.styleSheet() + "; border: 1px solid red;")
-            self.nameLabel.setStyleSheet(self.nameLabel.styleSheet() + "; border: 1px solid red;")
-            self.descLabel.setStyleSheet(self.descLabel.styleSheet() + "; border: 1px solid red;")
-            self.ratingLabel.setStyleSheet(self.ratingLabel.styleSheet() + "; border: 1px solid red;")
-            self.backendLabel.setStyleSheet(self.backendLabel.styleSheet() + "; border: 1px solid red;")
-            self.installButton.setStyleSheet(self.installButton.styleSheet().replace("border: none;", "border: 1px solid red;"))
-        
-        # Set transparent for mouse events
-        for label in [self.nameLabel, self.descLabel, self.ratingLabel, self.backendLabel]:
-            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        # Apply dev outline
+        self._apply_dev_outline(self.iconLabel, self.nameLabel, self.descLabel, 
+                                self.ratingLabel, self.backendLabel, self.installButton)
         
         # Update rating display
-        if not dev_outline:
+        if not self.dev_outline:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, self.update_rating_display)
     
