@@ -781,6 +781,23 @@ class MainView(QMainWindow):
         
         self.db_stats_label.setText(stats)
     
+    def setup_dev_mode(self, dev_logging: bool) -> None:
+        """Configure development mode features"""
+        if dev_logging:
+            self._open_log_window()
+    
+    def _open_log_window(self) -> None:
+        """Open and position log window"""
+        from views.log_view import LogView
+        self.log_window = LogView(self.logging_service)
+        self._position_log_window()
+        self.log_window.show()
+    
+    def _position_log_window(self) -> None:
+        """Position log window relative to main window"""
+        main_pos = self.pos()
+        self.log_window.move(main_pos.x() + 50, main_pos.y() + 50)
+    
     def closeEvent(self, event):
         """Handle application close"""
         if hasattr(self, 'stats_timer'):
