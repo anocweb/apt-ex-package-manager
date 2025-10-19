@@ -1,108 +1,211 @@
-# Apt-Ex Package Manager - Technology Stack
+# Technology Stack
 
 ## Programming Languages
-
-### Python 3.8+
-- **Primary Language**: All application logic and UI implementation
-- **Version Requirement**: Python 3.8 or higher for modern features
-- **Type Hints**: Required for function parameters and return values
-- **Style Guide**: PEP 8 compliance for code formatting
+- **Python 3**: Primary language for application logic
+- **Qt Designer XML**: UI layout definitions (.ui files)
 
 ## Core Dependencies
 
 ### GUI Framework
-- **PyQt6**: Modern Qt6 bindings for Python
-- **Import Pattern**: `from PyQt6.QtWidgets import *`
-- **UI Designer**: Qt Designer for layout files (.ui)
-- **Theme Integration**: KDE Plasma 6 system colors via QPalette
+- **PyQt6**: Python bindings for Qt6 framework
+  - Modern Qt6 API
+  - Native KDE Plasma 6 integration
+  - Cross-platform GUI toolkit
 
-### Package Backend Integration
-- **apt**: Python APT library for Debian/Ubuntu packages (current)
-- **flatpak**: Flatpak system integration via subprocess (planned)
-- **appimage**: AppImage file management and integration (planned)
-- **subprocess**: System command execution
-- **lmdb**: LMDB database for caching (migrating from SQLite)
+### System Integration
+- **python-apt**: Python interface to APT package management
+  - Direct access to APT cache
+  - Package installation/removal
+  - Repository management
 
-### Complete Dependency List
+### Database
+- **LMDB (Lightning Memory-Mapped Database)**: High-performance key-value store
+  - Memory-mapped file access
+  - ACID transactions
+  - Zero-copy reads
+  - Used for package and category caching
+
+## Development Tools
+
+### Build System
+- **Makefile**: Build automation and common tasks
+- **setup.py**: Python package setup and distribution
+
+### UI Development
+- **Qt Designer**: Visual UI layout editor
+  - Creates .ui XML files
+  - Generates Python code with pyuic6
+  - Rapid UI prototyping
+
+### Version Control
+- **Git**: Source code management
+- **.gitignore**: Excludes cache, build artifacts, Python bytecode
+
+## Development Commands
+
+### Running the Application
+```bash
+python src/main.py
+```
+
+### Installing Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Building UI Files
+```bash
+# Convert .ui files to Python (if using Makefile)
+make ui
+```
+
+### Testing
+```bash
+# Run plugin tests
+python test_plugins.py
+
+# Run LMDB tests
+python test_lmdb.py
+```
+
+## Project Configuration Files
+
+### requirements.txt
 ```
 PyQt6
 apt
-lmdb      # Database for caching (migrating from sqlite3)
-subprocess
-sys
-os        # File system operations
-pathlib   # Path handling for cache directories
-dataclasses # Type-safe data models
-typing    # Type hints and annotations
+lmdb
 ```
 
-## Development Environment
+### setup.py
+- Package metadata
+- Entry points
+- Installation configuration
 
-### Required Tools
-- Python 3.8+ interpreter
-- Qt6 development libraries
-- Qt Designer for UI layout editing
-- APT development headers
-- Flatpak runtime (optional, for Flatpak support)
-- AppImage runtime support
+### Makefile
+- Common development tasks
+- UI file compilation
+- Build automation
 
-### Build System
-- **Entry Point**: `python src/main.py`
-- **Dependencies**: Install via `pip install -r requirements.txt`
-- **No Build Step**: Direct Python execution
+## Runtime Environment
 
-### Development Commands
-```bash
-# Install dependencies
-pip install -r requirements.txt
+### Operating System
+- **Linux**: Primary target platform
+- **Debian/Ubuntu-based**: APT package manager required
+- **KDE Plasma 6**: Recommended desktop environment
 
-# Run application
-python src/main.py
+### System Requirements
+- Python 3.x
+- Qt6 libraries
+- APT package manager
+- LMDB library
+- Sudo/pkexec for privilege escalation
 
-# Development with Qt Designer
-designer src/ui/main_window.ui
-```
+### File System Locations
+- **Config**: `~/.config/apt-ex-package-manager/`
+- **Cache**: `data/cache.lmdb/` (relative to project)
+- **Logs**: Configured in logging service
 
 ## Architecture Technologies
 
-### UI Framework
-- **Qt6 Widgets**: Native desktop application framework
-- **QMainWindow**: Primary window with menu bar and status bar
-- **QSettings**: Configuration and preference management
-- **QPalette**: System theme color integration
+### Design Patterns
+- **MVC (Model-View-Controller)**: Application architecture
+- **Repository Pattern**: Data access abstraction
+- **Plugin Architecture**: Extensible backend system
+- **Service Container**: Dependency injection
+- **Observer Pattern**: Qt signals/slots for event handling
 
-### System Integration
-- **Privilege Escalation**: sudo/pkexec for administrative operations
-- **Threading**: Asynchronous operations to prevent UI freezing
-- **Process Management**: Safe subprocess execution for APT commands
-- **File System**: Configuration storage in `~/.config/apt-ex-package-manager/`
-- **Database**: LMDB cache in `~/.cache/apt-ex-package-manager/cache.lmdb/` (migrating from SQLite)
-- **Caching**: 24-hour TTL with automatic validation and refresh
+### Caching Strategy
+- **LMDB**: Persistent key-value storage
+- **TTL (Time-To-Live)**: Cache invalidation strategy
+- **Lazy Loading**: On-demand data loading
+- **Background Updates**: Non-blocking cache refresh
 
-### Security Technologies
-- **Input Validation**: All user inputs sanitized
-- **Command Sanitization**: Safe command-line argument handling
-- **Package Verification**: Signature checking when possible
-- **Secure Execution**: Controlled privilege escalation
+### Concurrency
+- **Qt Threading**: QThread for background operations
+- **Async Operations**: Non-blocking package operations
+- **Signal/Slot**: Thread-safe communication
 
-## Platform Requirements
+## External Services
 
-### Operating System
-- **Target Platform**: Linux systems (APT-based distributions preferred)
-- **Desktop Environment**: Optimized for KDE Plasma 6
-- **Compatibility**: Works with other desktop environments
-- **Package Systems**: APT (current), Flatpak (planned), AppImage (planned)
+### ODRS (Open Desktop Ratings Service)
+- Package ratings and reviews
+- Integration via odrs_service.py
+- Optional feature for package metadata
 
-### System Dependencies
-- APT package management system (required)
-- Qt6 runtime libraries
-- Python 3.8+ runtime
-- LMDB library
+### APT System
+- System package manager
+- Command-line interface via python-apt
+- Requires root privileges for modifications
 
-### Integration Features
-- KDE Breeze icon theme support
-- System color scheme integration
-- Desktop file associations
-- Command-line interface compatibility
-- LMDB database for offline functionality
-- Persistent caching across application restarts
+## Development Workflow
+
+### Code Organization
+- **src/**: All application code
+- **docs/**: Comprehensive documentation
+- **tests/**: Test files
+- **.amazonq/rules/**: AI assistant rules and memory bank
+
+### UI Development Flow
+1. Design UI in Qt Designer (.ui files)
+2. Generate Python code with pyuic6
+3. Import generated UI classes in views/widgets
+4. Connect signals to controller methods
+
+### Plugin Development Flow
+1. Create plugin class inheriting BasePackageController
+2. Implement required abstract methods
+3. Declare capabilities via get_capabilities()
+4. Add category mapping via get_sidebar_category_mapping()
+5. Place in src/controllers/plugins/
+6. Automatic discovery and registration
+
+## Testing Infrastructure
+
+### Test Files
+- **test_plugins.py**: Plugin system tests
+- **test_lmdb.py**: LMDB caching tests
+- **tests/**: Additional test directory
+
+### Testing Approach
+- Unit tests for individual components
+- Integration tests for plugin system
+- Manual testing for UI interactions
+
+## Performance Considerations
+
+### LMDB Benefits
+- Memory-mapped file I/O (fast reads)
+- Zero-copy architecture
+- ACID transactions
+- Concurrent read access
+
+### UI Responsiveness
+- Virtual scrolling for large lists
+- Background threading for long operations
+- Incremental search results
+- Cached package data
+
+## Security Practices
+
+### Privilege Escalation
+- Sudo/pkexec for package operations
+- Input validation before system commands
+- Sanitized command-line arguments
+
+### Data Validation
+- User input sanitization
+- Package signature verification (when possible)
+- Secure configuration storage
+
+## Future Technology Considerations
+
+### Planned Integrations
+- **Flatpak**: Additional package backend
+- **AppImage**: Portable application support
+- **Snap**: Potential future backend
+
+### Potential Enhancements
+- **D-Bus**: System integration
+- **PackageKit**: Alternative backend interface
+- **Notifications**: Desktop notification system
