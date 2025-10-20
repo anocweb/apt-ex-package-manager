@@ -39,27 +39,77 @@ class APTPlugin(BasePackageController):
         if self.logger:
             self.logger.debug(f"APT install function called for {package_name}")
         
-        with APTLock(logger=self.logger) as lock:
-            if not lock.is_locked():
-                self.log(f"Failed to acquire APT lock for installing {package_name}")
+        try:
+            import apt
+            import subprocess
+            
+            cache = apt.Cache()
+            if package_name not in cache:
+                self.log(f"Package {package_name} not found")
                 return False
             
-            self.log(f"Installing package: {package_name}")
-            # Actual installation logic here
-            return True
+            package = cache[package_name]
+            if package.is_installed:
+                self.log(f"Package {package_name} is already installed")
+                return True
+            
+            # Use pkexec to run apt-get install with GUI password prompt
+            cmd = ['pkexec', 'apt-get', 'install', '-y', package_name]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.log(f"Successfully installed {package_name}")
+                # Update cache
+                if self.lmdb_manager:
+                    from cache import PackageCacheModel
+                    pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+                    pkg_cache.update_installed_status(package_name, True)
+                return True
+            else:
+                self.log(f"Failed to install {package_name}: {result.stderr}")
+                return False
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error installing {package_name}: {e}")
+            return False
 
     def remove_package(self, package_name):
         if self.logger:
             self.logger.debug(f"APT remove function called for {package_name}")
         
-        with APTLock(logger=self.logger) as lock:
-            if not lock.is_locked():
-                self.log(f"Failed to acquire APT lock for removing {package_name}")
+        try:
+            import apt
+            import subprocess
+            
+            cache = apt.Cache()
+            if package_name not in cache:
+                self.log(f"Package {package_name} not found")
                 return False
             
-            self.log(f"Removing package: {package_name}")
-            # Actual removal logic here
-            return True
+            package = cache[package_name]
+            if not package.is_installed:
+                self.log(f"Package {package_name} is not installed")
+                return True
+            
+            # Use pkexec to run apt-get remove with GUI password prompt
+            cmd = ['pkexec', 'apt-get', 'remove', '-y', package_name]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.log(f"Successfully removed {package_name}")
+                # Update cache
+                if self.lmdb_manager:
+                    from cache import PackageCacheModel
+                    pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+                    pkg_cache.update_installed_status(package_name, False)
+                return True
+            else:
+                self.log(f"Failed to remove {package_name}: {result.stderr}")
+                return False
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error removing {package_name}: {e}")
+            return False
 
     def search_packages(self, query):
         if self.logger:

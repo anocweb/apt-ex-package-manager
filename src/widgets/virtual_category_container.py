@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QMainWindow
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from widgets.package_list_item import PackageListItem
+from widgets.installed_list_item import InstalledListItem
 
 class VirtualCategoryContainer(QScrollArea):
     """Virtual scrolling container for category packages"""
@@ -86,8 +87,22 @@ class VirtualCategoryContainer(QScrollArea):
         for i in range(first_visible, last_visible + 1):
             if i < len(self.all_packages):
                 package = self.all_packages[i]
-                widget = PackageListItem(package, self.odrs_service)
-                widget.install_requested.connect(self.on_install_requested)
+                
+                # Use InstalledListItem if package is installed
+                if getattr(package, 'is_installed', False):
+                    pkg_dict = {
+                        'name': package.name,
+                        'description': package.description,
+                        'version': package.version,
+                        'backend': getattr(package, 'backend', 'apt'),
+                        'installed_size': getattr(package, 'installed_size', 0)
+                    }
+                    widget = InstalledListItem(pkg_dict)
+                    widget.remove_requested.connect(self.on_install_requested)
+                else:
+                    widget = PackageListItem(package, self.odrs_service)
+                    widget.install_requested.connect(self.on_install_requested)
+                
                 widget.double_clicked.connect(lambda p=package: self.on_package_selected(p))
                 widget.setFixedHeight(self.item_height)
                 self.container_layout.addWidget(widget)

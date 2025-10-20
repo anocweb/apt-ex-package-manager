@@ -132,8 +132,10 @@ class MainView(QMainWindow):
             panel.update_requested.connect(self.update_package)
             panel.update_all_requested.connect(self.update_all_packages)
             panel.updates_count_changed.connect(self.update_updates_button)
+            panel.package_selected.connect(self.show_package_detail)
         elif panel_name == 'category':
             panel.install_requested.connect(self.install_package)
+            panel.remove_requested.connect(self.remove_package)
             panel.refresh_requested.connect(self.refresh_cache)
             panel.package_selected.connect(self.show_package_detail)
         elif panel_name == 'package_detail':
@@ -276,25 +278,106 @@ class MainView(QMainWindow):
         self.contentStack.setCurrentWidget(detail_panel)
         self.pageTitle.setText(detail_panel.get_title())
         self.update_context_actions(detail_panel)
+        self.status_service.show_message("Loading package details...", 2000)
     
     def return_from_detail(self):
         """Return from detail panel to previous panel"""
         detail_panel = self.panels['package_detail']
-        if detail_panel.return_panel and detail_panel.return_panel in self.panels:
-            self.select_page(detail_panel.return_panel)
+        return_panel_key = detail_panel.return_panel
+        
+        if return_panel_key and return_panel_key in self.panels:
+            panel = self.panels[return_panel_key]
+            self.contentStack.setCurrentWidget(panel)
+            self.pageTitle.setText(panel.get_title())
+            self.update_context_actions(panel)
+            self.update_button_selection(return_panel_key)
+            self.status_service.show_message(f"{panel.get_title()}", 2000)
         else:
             self.select_page('home')
     
     def install_package(self, package_name, backend='apt'):
         """Install a package"""
         self.logger.info(f"User requested install: {package_name}")
-        self.package_manager.install_package(package_name, backend=backend)
-        self.status_service.show_message(f"Installing {package_name}...", 3000)
+        
+        from workers.package_operation_worker import PackageOperationWorker
+        backend_obj = self.package_manager.get_backend(backend)
+        
+        if not backend_obj:
+            self.status_service.show_message(f"Backend {backend} not available", 3000)
+            return
+        
+        self.operation_worker = PackageOperationWorker(backend_obj, 'install', package_name)
+        self.operation_worker.finished.connect(self.on_install_finished)
+        self.operation_worker.error.connect(self.on_operation_error)
+        self.operation_worker.start()
+        
+        self.status_service.start_animation(f"Installing {package_name}")
+    
+    def on_install_finished(self, success, package_name):
+        """Handle install completion"""
+        self.status_service.stop_animation()
+        if success:
+            self.status_service.show_message(f"Successfully installed {package_name}", 3000)
+            self.refresh_current_panel()
+        else:
+            self.status_service.show_message(f"Failed to install {package_name}", 3000)
     
     def remove_package(self, package_name, backend='apt'):
         """Remove a package"""
         self.logger.info(f"User requested removal: {package_name}")
-        self.status_service.show_message(f"Removing {package_name}...", 3000)
+        
+        from workers.package_operation_worker import PackageOperationWorker
+        backend_obj = self.package_manager.get_backend(backend)
+        
+        if not backend_obj:
+            self.status_service.show_message(f"Backend {backend} not available", 3000)
+            return
+        
+        self.operation_worker = PackageOperationWorker(backend_obj, 'remove', package_name)
+        self.operation_worker.finished.connect(self.on_remove_finished)
+        self.operation_worker.error.connect(self.on_operation_error)
+        self.operation_worker.start()
+        
+        self.status_service.start_animation(f"Removing {package_name}")
+    
+    def on_remove_finished(self, success, package_name):
+        """Handle remove completion"""
+        self.status_service.stop_animation()
+        if success:
+            self.status_service.show_message(f"Successfully removed {package_name}", 3000)
+            self.refresh_current_panel()
+        else:
+            self.status_service.show_message(f"Failed to remove {package_name}", 3000)
+    
+    def on_operation_error(self, error_message):
+        """Handle operation error"""
+        self.status_service.stop_animation()
+        self.status_service.show_message(f"Error: {error_message}", 5000)
+    
+    def refresh_current_panel(self):
+        """Refresh current panel without losing scroll position"""
+        current_panel = self.contentStack.currentWidget()
+        
+        # Save scroll position for panels with virtual containers
+        scroll_pos = None
+        if hasattr(current_panel, 'virtual_container'):
+            scroll_pos = current_panel.virtual_container.verticalScrollBar().value()
+        elif hasattr(current_panel, 'virtual_category_container'):
+            scroll_pos = current_panel.virtual_category_container.verticalScrollBar().value()
+        
+        # Reload panel data
+        if hasattr(current_panel, 'load_packages'):
+            current_panel.load_packages()
+        elif hasattr(current_panel, 'load_category') and hasattr(current_panel, 'current_category'):
+            current_panel.load_category(current_panel.current_category)
+        
+        # Restore scroll position
+        if scroll_pos is not None:
+            from PyQt6.QtCore import QTimer
+            if hasattr(current_panel, 'virtual_container'):
+                QTimer.singleShot(100, lambda: current_panel.virtual_container.verticalScrollBar().setValue(scroll_pos))
+            elif hasattr(current_panel, 'virtual_category_container'):
+                QTimer.singleShot(100, lambda: current_panel.virtual_category_container.verticalScrollBar().setValue(scroll_pos))
     
     def update_package(self, package_name):
         """Update a package"""

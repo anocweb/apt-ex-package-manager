@@ -289,7 +289,7 @@ QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</strin
           </size>
          </property>
          <property name="styleSheet">
-          <string>border-bottom: 1px solid palette(dark);</string>
+          <string></string>
          </property>
          <layout class="QHBoxLayout" name="headerLayout">
           <property name="leftMargin">

@@ -182,6 +182,4 @@ class PackageDetailPanel(BasePanel):
     
     def get_title(self):
         """Return panel title"""
-        if self.current_package:
-            return self.current_package.get('name', 'Package Details')
         return 'Package Details'

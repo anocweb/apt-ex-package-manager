@@ -12,6 +12,7 @@ class UpdatesPanel(BasePanel):
     update_requested = pyqtSignal(str)
     update_all_requested = pyqtSignal()
     updates_count_changed = pyqtSignal(int)
+    package_selected = pyqtSignal(dict)
     
     def __init__(self, ui_file, package_manager, lmdb_manager, logging_service, app_settings):
         self.updates_available = False
@@ -91,6 +92,7 @@ class UpdatesPanel(BasePanel):
             for update_info in sorted_updates:
                 item = UpdateListItem(update_info)
                 item.update_requested.connect(self.update_requested.emit)
+                item.double_clicked.connect(lambda u=update_info: self.package_selected.emit(u))
                 container_layout.addWidget(item)
             
             # Add spacer at bottom
