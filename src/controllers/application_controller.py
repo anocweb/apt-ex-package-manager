@@ -3,7 +3,7 @@ from config.app_config import AppConfig
 from services.service_container import ServiceContainer
 from services.theme_service import ThemeService
 from services.logging_service import LoggingService
-from cache import LMDBManager
+from cache import LMDBManager, PackageCacheModel
 from controllers.package_manager import PackageManager
 from views.main_view import MainView
 
@@ -20,6 +20,7 @@ class ApplicationController:
         """Initialize all services and components"""
         self._setup_theme()
         self._initialize_services()
+        self._populate_cache()
         self._create_main_view()
         self._setup_dev_mode()
     
@@ -42,6 +43,66 @@ class ApplicationController:
         # Package manager
         package_manager = PackageManager(lmdb_manager, logging_service)
         self.container.register('package_manager', package_manager)
+    
+    def _populate_cache(self) -> None:
+        """Populate cache before creating main view"""
+        from controllers.apt_controller import APTController
+        from cache import PackageData
+        
+        logging_service = self.container.get('logging')
+        lmdb_manager = self.container.get('lmdb')
+        
+        logger = logging_service.get_logger('startup')
+        logger.info("Checking cache status...")
+        
+        # Check if cache is empty
+        pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
+        cache_is_empty = pkg_cache.is_cache_empty()
+        
+        if cache_is_empty:
+            logger.info("Cache is empty, building initial cache...")
+        else:
+            logger.info("Refreshing package cache...")
+        
+        # Update cache synchronously
+        apt_controller = APTController(logging_service=logging_service)
+        
+        # Load packages
+        logger.info("Loading package details from APT...")
+        packages = apt_controller.get_all_packages_for_cache()
+        logger.info(f"Loaded {len(packages)} packages")
+        
+        # Cache packages in batches
+        logger.info("Caching packages...")
+        batch_size = 100
+        total = len(packages)
+        
+        for batch_start in range(0, total, batch_size):
+            batch_end = min(batch_start + batch_size, total)
+            batch = packages[batch_start:batch_end]
+            
+            for pkg_data in batch:
+                package = PackageData(
+                    package_id=pkg_data['package_id'],
+                    name=pkg_data['name'],
+                    version=pkg_data.get('version'),
+                    description=pkg_data.get('description', ''),
+                    summary=pkg_data.get('summary'),
+                    section=pkg_data.get('section'),
+                    architecture=pkg_data.get('architecture'),
+                    size=pkg_data.get('size'),
+                    installed_size=pkg_data.get('installed_size'),
+                    maintainer=pkg_data.get('maintainer'),
+                    homepage=pkg_data.get('homepage'),
+                    metadata=pkg_data.get('metadata', {})
+                )
+                pkg_cache.add_package(package)
+        
+        # Update installed status
+        logger.info("Updating installed package status...")
+        apt_controller.update_installed_status(lmdb_manager)
+        
+        logger.info("Cache population complete")
     
     def _create_main_view(self) -> None:
         """Create main view with dependency injection"""

@@ -413,3 +413,4 @@ By following these guidelines, you'll get the benefits of AI assistance while ma
 *For questions about current implementation, see docs/STATUS.md*
 *For coding standards, see .amazonq/rules/coding-standards.md*
 *For architecture plans, see docs/PLUGIN_ARCHITECTURE.md*
+*For plugin-specific documentation, see docs/plugins/*

@@ -273,6 +273,14 @@ for pkg in results:
 3. **No plugin configuration UI** - Settings integration not yet implemented
 4. **No plugin marketplace** - No discovery/installation of third-party plugins
 
+## Plugin-Specific Documentation
+
+For detailed documentation on individual plugins:
+- [Plugin Documentation Directory](../plugins/) - Per-plugin documentation
+- [APT Plugin](../plugins/apt/) - APT-specific features and implementation
+- [Flatpak Plugin](../plugins/flatpak/) - Flatpak-specific features (planned)
+- [AppImage Plugin](../plugins/appimage/) - AppImage-specific features (planned)
+
 ## References
 
 - [Plugin Architecture Design](PLUGIN_ARCHITECTURE.md) - Original design specification

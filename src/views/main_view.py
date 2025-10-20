@@ -74,9 +74,6 @@ class MainView(QMainWindow):
         
         # Initial page
         self.select_page('home')
-        
-        # Populate caches on startup
-        self.populate_caches_on_startup()
     
     def setup_window_icon(self):
         """Setup window icon based on theme"""
@@ -296,31 +293,15 @@ class MainView(QMainWindow):
             return
         
         self.logger.info("User requested cache refresh")
-        self.lmdb_manager.force_refresh('apt')
         self.populate_caches_on_startup()
     
     def populate_caches_on_startup(self):
-        """Populate caches on startup or when refresh is requested"""
-        from cache import PackageCacheModel
-        
-        # Check if cache is empty
-        pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
-        cache_is_empty = pkg_cache.is_cache_empty()
-        
-        # Always update on startup or if cache is empty
-        update_categories = True
-        update_packages = True
-        update_installed = True
-        
+        """Refresh cache when manually requested"""
         self.cache_updating = True
-        
-        if cache_is_empty:
-            self.status_service.start_animation("Building package cache")
-        else:
-            self.status_service.start_animation("Refreshing package data")
+        self.status_service.start_animation("Refreshing package data")
         
         self.cache_worker = CacheUpdateWorker(
-            update_categories, update_packages, update_installed,
+            True, True, True,  # update_categories, update_packages, update_installed
             self.logging_service, self.lmdb_manager
         )
         self.cache_worker.finished_signal.connect(self.on_cache_update_finished)

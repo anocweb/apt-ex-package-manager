@@ -4,6 +4,8 @@
 
 This example shows a complete implementation of a Snap backend plugin.
 
+> **Note**: For plugin-specific documentation (features, configuration, troubleshooting), see the [plugins documentation directory](../plugins/). This example focuses on implementation patterns.
+
 ### File: `src/controllers/plugins/snap_plugin.py`
 
 ```python

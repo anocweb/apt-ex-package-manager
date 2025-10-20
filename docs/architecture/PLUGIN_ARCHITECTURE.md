@@ -384,6 +384,14 @@ touch src/controllers/plugins/__init__.py
 - Document each plugin's capabilities
 - Add plugin development guide
 
+## Plugin Documentation
+
+For detailed plugin-specific documentation, see:
+- [Plugin Documentation Directory](../plugins/) - Per-plugin documentation
+- [APT Plugin](../plugins/apt/) - APT-specific features (locking, caching)
+- [Flatpak Plugin](../plugins/flatpak/) - Flatpak-specific features (planned)
+- [AppImage Plugin](../plugins/appimage/) - AppImage-specific features (planned)
+
 ## Plugin Development Guide
 
 ### Creating a New Plugin

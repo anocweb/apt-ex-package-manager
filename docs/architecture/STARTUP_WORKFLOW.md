@@ -34,7 +34,7 @@ main() → QApplication → ApplicationController → app.exec()
 
 **Sequence:**
 ```
-_setup_theme() → _initialize_services() → _create_main_view() → _setup_dev_mode()
+_setup_theme() → _initialize_services() → _populate_cache() → _create_main_view() → _setup_dev_mode()
 ```
 
 #### 2.1 Theme Setup
@@ -60,7 +60,23 @@ _setup_theme() → _initialize_services() → _create_main_view() → _setup_dev
    - Discovers and registers backend plugins
    - Register in container as `'package_manager'`
 
-#### 2.3 Main View Creation
+#### 2.3 Cache Population
+**Method:** `_populate_cache()`
+
+**Synchronous cache update before UI loads:**
+1. Check if cache is empty
+2. Load all packages from APT
+3. Cache packages in batches (100 at a time)
+4. Update installed package status
+5. Log progress to console
+
+**Why before main view:**
+- Ensures data is ready when UI loads
+- Prevents empty UI on first launch
+- Makes splash screen more valuable (shows during actual work)
+- User sees fully populated app immediately
+
+#### 2.4 Main View Creation
 - Create `MainView` with injected dependencies:
   - package_manager
   - lmdb_manager
@@ -68,7 +84,7 @@ _setup_theme() → _initialize_services() → _create_main_view() → _setup_dev
   - dev_logging flag
   - stdout_log_level
 
-#### 2.4 Dev Mode Setup
+#### 2.5 Dev Mode Setup
 - If `--dev-logging` flag set, enable debug features
 
 ---
@@ -179,22 +195,7 @@ Connect panel-specific signals:
 - Install/remove requests
 - Settings changes
 
-#### 4.7 Cache Population
-**Method:** `populate_caches_on_startup()`
-
-**Behavior:**
-- Always refreshes cache on startup
-- Checks if cache is empty to show appropriate message
-- Starts `CacheUpdateWorker` thread
-- Worker loads all packages from APT
-- Worker populates LMDB cache
-- Signal when complete
-
-**Note:** Cache has no TTL - it only updates on:
-1. Application startup
-2. Manual refresh request
-
-#### 4.8 Initial Page Selection
+#### 4.7 Initial Page Selection
 - Call `select_page('home')`
 - Display home panel
 - Set page title
@@ -254,17 +255,22 @@ Connect panel-specific signals:
        └─ Setup navigation
        └─ Connect signals
 
-150ms  Cache check
+150ms  Cache population (BLOCKING - 5-30 seconds)
        └─ Check if cache is empty
+       └─ Load APT packages synchronously
+       └─ Cache packages in batches
+       └─ Update installed status
+       └─ Log progress
 
-200ms  CacheUpdateWorker (always runs on startup)
-       └─ Load APT packages (5-30 seconds)
-       └─ Populate LMDB cache
-       └─ Update UI when complete
+5-30s  MainView init (after cache is ready)
+       └─ Load main_window.ui
+       └─ Load panel UI files
+       └─ Setup navigation
+       └─ Connect signals
 
-250ms  Show main window
+5-30s  Show main window
        └─ Display home panel
-       └─ Application ready for user interaction
+       └─ Application ready with full data
 ```
 
 ## Dependency Graph
@@ -337,17 +343,17 @@ All UI loaded from `.ui` files:
 
 ## Performance Considerations
 
-**Fast startup:**
-- LMDB cache eliminates slow APT parsing
-- Plugin discovery is fast (file scan only)
-- UI files load quickly
-- Lazy loading of panel data
+**Startup timing:**
+- Cache population is BLOCKING (5-30 seconds)
+- Happens before main window appears
+- User sees nothing until cache is ready
+- **This is where a splash screen would be valuable**
 
-**Slow operations (background threads):**
-- Initial cache population (5-30 seconds)
+**After startup (background threads):**
 - Package search across backends
 - Update checks
 - Package installation/removal
+- Manual cache refresh
 
 ## Development Mode
 
