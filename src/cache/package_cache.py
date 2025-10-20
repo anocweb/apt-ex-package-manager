@@ -22,6 +22,82 @@ class PackageCacheModel:
         except Exception:
             return False
     
+    def add_packages_bulk(self, packages: List[PackageData], update_indexes: bool = False) -> int:
+        """Add multiple packages in a single transaction
+        
+        Args:
+            packages: List of PackageData objects to add
+            update_indexes: Whether to update indexes (slow, skip for bulk operations)
+            
+        Returns:
+            Number of packages successfully added
+        """
+        count = 0
+        db = self.lmdb.get_db(self.db_name)
+        
+        try:
+            with self.lmdb.transaction(write=True) as txn:
+                for package in packages:
+                    txn.put(
+                        package.package_id.encode(),
+                        json.dumps(package.to_dict()).encode(),
+                        db=db
+                    )
+                    count += 1
+            
+            # Optionally update indexes (skip during initial bulk load)
+            if update_indexes:
+                for package in packages:
+                    self._update_indexes(package)
+            
+            return count
+        except Exception:
+            return count
+    
+    def rebuild_indexes(self) -> None:
+        """Rebuild all indexes from cached packages"""
+        # Clear existing indexes
+        self._clear_backend_indexes()
+        
+        # Collect all index data first
+        section_indexes = {}  # section -> [package_ids]
+        installed_packages = []
+        
+        all_packages = self.get_all_packages()
+        for package in all_packages:
+            # Section index
+            if package.section:
+                if package.section not in section_indexes:
+                    section_indexes[package.section] = []
+                section_indexes[package.section].append(package.package_id)
+            
+            # Installed index
+            if package.is_installed:
+                installed_packages.append(package.package_id)
+        
+        # Write all indexes in bulk
+        indexes_db = self.lmdb.get_db(self.indexes_db)
+        with self.lmdb.transaction(write=True) as txn:
+            # Write section indexes
+            for section, package_ids in section_indexes.items():
+                index_key = f"section:{self.backend}:{section}"
+                index_data = {
+                    'index_type': 'section',
+                    'value': section,
+                    'package_ids': package_ids
+                }
+                txn.put(index_key.encode(), json.dumps(index_data).encode(), db=indexes_db)
+            
+            # Write installed index
+            if installed_packages:
+                index_key = f"installed:{self.backend}:1"
+                index_data = {
+                    'index_type': 'installed',
+                    'value': '1',
+                    'package_ids': installed_packages
+                }
+                txn.put(index_key.encode(), json.dumps(index_data).encode(), db=indexes_db)
+    
     def get_package(self, package_id: str) -> Optional[PackageData]:
         """Get package by ID"""
         data = self.lmdb.get(self.db_name, package_id)
@@ -121,6 +197,36 @@ class PackageCacheModel:
         pkg.is_installed = is_installed
         pkg.last_updated = datetime.now().isoformat()
         return self.add_package(pkg)
+    
+    def update_installed_status_bulk(self, installed_names: set) -> int:
+        """Update installed status for all packages in bulk
+        
+        Args:
+            installed_names: Set of package names that are installed
+            
+        Returns:
+            Number of packages updated
+        """
+        count = 0
+        db = self.lmdb.get_db(self.db_name)
+        timestamp = datetime.now().isoformat()
+        
+        # Update all packages in single transaction
+        with self.lmdb.transaction(write=True) as txn:
+            cursor = txn.cursor(db=db)
+            for key, value in cursor:
+                pkg_data = json.loads(value.decode())
+                pkg_name = pkg_data.get('name')
+                is_installed = pkg_name in installed_names
+                
+                # Only update if status changed
+                if pkg_data.get('is_installed') != is_installed:
+                    pkg_data['is_installed'] = is_installed
+                    pkg_data['last_updated'] = timestamp
+                    txn.put(key, json.dumps(pkg_data).encode(), db=db)
+                    count += 1
+        
+        return count
     
     def clear_cache(self):
         """Clear all packages for this backend"""

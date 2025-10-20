@@ -81,15 +81,10 @@ class APTController:
             
             self.log(f"Found {len(installed_names)} installed packages")
             
-            # Update cache
+            # Update cache in bulk
             from cache import PackageCacheModel
             pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
-            all_packages = pkg_cache.get_all_packages()
-            
-            for pkg in all_packages:
-                is_installed = pkg.name in installed_names
-                if pkg.is_installed != is_installed:
-                    pkg_cache.update_installed_status(pkg.package_id, is_installed)
+            pkg_cache.update_installed_status_bulk(installed_names)
             
             self.log("Installed status updated")
             return True
