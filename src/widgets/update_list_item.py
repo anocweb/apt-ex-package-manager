@@ -14,10 +14,8 @@ class UpdateListItem(BaseListItem):
     
     def setup_ui(self):
         """Setup update-specific UI"""
-        # Determine if security update and set styling
+        # Determine if security update
         is_security = self.update_info.get('is_security', False)
-        if is_security:
-            self._set_frame_style(self.COLOR_SECURITY, self.COLOR_SECURITY_BG)
         
         # Set package data
         name = self.update_info.get('name', 'Unknown Package')
@@ -33,15 +31,16 @@ class UpdateListItem(BaseListItem):
             f'<span style="color: palette(highlight);">{new_version}</span>'
         )
         
-        # Set security indicator
+        # Set backend label with security indicator
+        backend = self.update_info.get('backend', 'apt').upper()
         if is_security:
-            self.securityLabel.setText('🔒 SECURITY')
+            self.securityLabel.setText(f'🔒 {backend}')
             self.iconLabel.setText('🔒')
             self.iconLabel.setStyleSheet(
                 "background-color: rgba(255, 107, 107, 0.2); border-radius: 8px;"
             )
         else:
-            self.securityLabel.setText('')
+            self.securityLabel.setText(backend)
         
         # Connect update button
         self.updateButton.clicked.connect(lambda: self.update_requested.emit(name))

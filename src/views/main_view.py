@@ -14,6 +14,7 @@ from views.panels.category_panel import CategoryPanel
 from views.panels.settings_panel import SettingsPanel
 from views.panels.about_panel import AboutPanel
 from views.panels.category_list_panel import CategoryListPanel
+from views.panels.package_detail_panel import PackageDetailPanel
 import os
 
 
@@ -99,6 +100,7 @@ class MainView(QMainWindow):
             'updates': ('src/ui/panels/updates_panel.ui', UpdatesPanel),
             'category': ('src/ui/panels/category_panel.ui', CategoryPanel),
             'category_list': ('src/ui/panels/category_list_panel.ui', CategoryListPanel),
+            'package_detail': ('src/ui/panels/package_detail_panel.ui', PackageDetailPanel),
             'settings': ('src/ui/panels/settings_panel.ui', SettingsPanel),
             'about': ('src/ui/panels/about_panel.ui', AboutPanel)
         }
@@ -122,8 +124,10 @@ class MainView(QMainWindow):
         if panel_name == 'home':
             panel.install_requested.connect(self.install_package)
             panel.refresh_requested.connect(self.refresh_cache)
+            panel.package_selected.connect(self.show_package_detail)
         elif panel_name == 'installed':
             panel.remove_requested.connect(self.remove_package)
+            panel.package_selected.connect(self.show_package_detail)
         elif panel_name == 'updates':
             panel.update_requested.connect(self.update_package)
             panel.update_all_requested.connect(self.update_all_packages)
@@ -131,6 +135,11 @@ class MainView(QMainWindow):
         elif panel_name == 'category':
             panel.install_requested.connect(self.install_package)
             panel.refresh_requested.connect(self.refresh_cache)
+            panel.package_selected.connect(self.show_package_detail)
+        elif panel_name == 'package_detail':
+            panel.back_requested.connect(self.return_from_detail)
+            panel.install_requested.connect(self.install_package)
+            panel.remove_requested.connect(self.remove_package)
         elif panel_name == 'settings':
             panel.default_repository_changed.connect(self.on_default_repository_changed)
     
@@ -254,13 +263,35 @@ class MainView(QMainWindow):
             button.clicked.connect(callback)
             layout.addWidget(button)
     
-    def install_package(self, package_name):
+    def show_package_detail(self, package_info):
+        """Show package detail panel"""
+        current_panel_key = None
+        for key, panel in self.panels.items():
+            if self.contentStack.currentWidget() == panel:
+                current_panel_key = key
+                break
+        
+        detail_panel = self.panels['package_detail']
+        detail_panel.show_package(package_info, current_panel_key)
+        self.contentStack.setCurrentWidget(detail_panel)
+        self.pageTitle.setText(detail_panel.get_title())
+        self.update_context_actions(detail_panel)
+    
+    def return_from_detail(self):
+        """Return from detail panel to previous panel"""
+        detail_panel = self.panels['package_detail']
+        if detail_panel.return_panel and detail_panel.return_panel in self.panels:
+            self.select_page(detail_panel.return_panel)
+        else:
+            self.select_page('home')
+    
+    def install_package(self, package_name, backend='apt'):
         """Install a package"""
         self.logger.info(f"User requested install: {package_name}")
-        self.package_manager.install_package(package_name, backend='apt')
+        self.package_manager.install_package(package_name, backend=backend)
         self.status_service.show_message(f"Installing {package_name}...", 3000)
     
-    def remove_package(self, package_name):
+    def remove_package(self, package_name, backend='apt'):
         """Remove a package"""
         self.logger.info(f"User requested removal: {package_name}")
         self.status_service.show_message(f"Removing {package_name}...", 3000)

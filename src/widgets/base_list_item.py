@@ -1,11 +1,13 @@
 """Base list item widget with standardized styling"""
 from PyQt6.QtWidgets import QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6 import uic
 
 
 class BaseListItem(QFrame):
     """Base class for all list item widgets with consistent styling"""
+    
+    double_clicked = pyqtSignal()
     
     # Standard dimensions
     ITEM_HEIGHT = 125
@@ -22,9 +24,15 @@ class BaseListItem(QFrame):
         uic.loadUi(ui_file, self)
         self._apply_base_styling()
     
+    def mouseDoubleClickEvent(self, event):
+        """Handle double click"""
+        self.double_clicked.emit()
+        super().mouseDoubleClickEvent(event)
+    
     def _apply_base_styling(self):
         """Apply base styling to the widget"""
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFixedHeight(self.ITEM_HEIGHT)
         
         # Check if dev outline is active
         from PyQt6.QtWidgets import QApplication

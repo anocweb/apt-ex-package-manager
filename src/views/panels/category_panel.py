@@ -9,6 +9,7 @@ class CategoryPanel(BasePanel):
     
     install_requested = pyqtSignal(str)
     refresh_requested = pyqtSignal()
+    package_selected = pyqtSignal(dict)
     
     def __init__(self, ui_file, package_manager, lmdb_manager, logging_service, app_settings):
         self.current_category = None
@@ -21,8 +22,9 @@ class CategoryPanel(BasePanel):
         self.categoryLayout.replaceWidget(self.categoryScrollArea, self.virtual_category_container)
         self.categoryScrollArea.setParent(None)
         
-        # Connect install signal
+        # Connect signals
         self.virtual_category_container.install_requested.connect(self.install_requested.emit)
+        self.virtual_category_container.package_selected.connect(self.package_selected.emit)
     
     def get_context_actions(self):
         """Return context actions for category panel"""

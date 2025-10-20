@@ -8,6 +8,7 @@ class VirtualInstalledContainer(QScrollArea):
     """Virtual scrolling container for installed packages"""
     
     remove_requested = pyqtSignal(str)
+    package_selected = pyqtSignal(dict)
     
     def __init__(self):
         super().__init__()
@@ -99,6 +100,7 @@ class VirtualInstalledContainer(QScrollArea):
                 pkg_info = self.all_packages[i]
                 widget = InstalledListItem(pkg_info)
                 widget.remove_requested.connect(self.remove_requested.emit)
+                widget.double_clicked.connect(lambda p=pkg_info: self.package_selected.emit(p))
                 self.container_layout.addWidget(widget)
                 self.visible_widgets[i] = widget
         

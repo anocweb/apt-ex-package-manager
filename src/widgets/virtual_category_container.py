@@ -5,7 +5,8 @@ from widgets.package_list_item import PackageListItem
 class VirtualCategoryContainer(QScrollArea):
     """Virtual scrolling container for category packages"""
     
-    install_requested = pyqtSignal(str)  # Signal for install requests
+    install_requested = pyqtSignal(str)
+    package_selected = pyqtSignal(dict)
     
     def __init__(self, odrs_service=None):
         super().__init__()
@@ -87,6 +88,7 @@ class VirtualCategoryContainer(QScrollArea):
                 package = self.all_packages[i]
                 widget = PackageListItem(package, self.odrs_service)
                 widget.install_requested.connect(self.on_install_requested)
+                widget.double_clicked.connect(lambda p=package: self.on_package_selected(p))
                 widget.setFixedHeight(self.item_height)
                 self.container_layout.addWidget(widget)
                 self.visible_widgets[i] = widget
@@ -105,6 +107,17 @@ class VirtualCategoryContainer(QScrollArea):
     def on_install_requested(self, package_name):
         """Forward install request signal"""
         self.install_requested.emit(package_name)
+    
+    def on_package_selected(self, package):
+        """Forward package selection signal"""
+        pkg_dict = {
+            'name': package.name,
+            'description': package.description,
+            'version': package.version,
+            'backend': getattr(package, 'backend', 'apt'),
+            'installed': getattr(package, 'installed', False)
+        }
+        self.package_selected.emit(pkg_dict)
     
     def resizeEvent(self, event):
         """Handle resize events"""

@@ -10,12 +10,14 @@ class InstalledPanel(BasePanel):
     """Panel for displaying installed packages"""
     
     remove_requested = pyqtSignal(str)
+    package_selected = pyqtSignal(dict)
     
     def setup_ui(self):
         """Setup installed panel UI"""
         # Replace scroll area with virtual container
         self.virtual_container = VirtualInstalledContainer()
         self.virtual_container.remove_requested.connect(self.remove_requested.emit)
+        self.virtual_container.package_selected.connect(self.package_selected.emit)
         
         # Replace in layout
         parent_layout = self.installedScrollArea.parent().layout()

@@ -33,6 +33,7 @@ class HomePanel(BasePanel):
     
     install_requested = pyqtSignal(str)
     refresh_requested = pyqtSignal()
+    package_selected = pyqtSignal(dict)
     
     def __init__(self, ui_file, package_manager, lmdb_manager, logging_service, app_settings):
         self.current_packages = []
