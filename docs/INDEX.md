@@ -16,6 +16,7 @@
 ## Architecture
 - [Startup Workflow](architecture/STARTUP_WORKFLOW.md) - Application initialization sequence
 - [View Architecture](architecture/VIEW_ARCHITECTURE.md) - Panel controllers and worker threads
+- [Panels and Scrolling](architecture/PANELS_AND_SCROLLING.md) - Panel system and virtual scrolling
 - [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB caching system
 - [Plugin Architecture](architecture/PLUGIN_ARCHITECTURE.md) - Multi-backend plugin system
 - [MVC Architecture](architecture/MVC_REFACTOR_ARCHITECTURE.md) - Application controller and services

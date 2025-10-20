@@ -449,14 +449,48 @@ if hasattr(settings_panel, 'makeDefaultFlatpak'):
 ## Performance Optimization
 
 ### Virtual Scrolling
-- Use virtual scrolling for large lists
-- Load items on-demand as user scrolls
-- Example: `VirtualCategoryContainer`, `VirtualLogContainer`
+- Use virtual scrolling for lists with 100+ items
+- Only creates widgets for visible items (~10-20 at a time)
+- Fixed item heights required for predictable layout
+- Examples: `VirtualInstalledContainer`, `VirtualCategoryContainer`, `VirtualLogContainer`
+- See `docs/architecture/PANELS_AND_SCROLLING.md` for complete pattern
+
+**Virtual Container Pattern**:
+```python
+class VirtualContainer(QScrollArea):
+    def __init__(self):
+        self.all_packages = []        # Full dataset
+        self.visible_widgets = {}     # Rendered widgets
+        self.item_height = 125        # Fixed height
+        self.viewport_buffer = 3      # Extra items
+        self.update_timer = QTimer()  # Debounce (50ms)
+    
+    def perform_update(self):
+        # Calculate visible range
+        # Skip if range unchanged
+        # Create spacers + visible widgets only
+```
 
 ### Lazy Loading
-- Load data only when needed
-- Use pagination for large datasets
-- Example: `get_installed_packages(limit=20, offset=0)`
+- Load data in background threads to prevent UI freezing
+- Use batch loading (initial 20, then 50 at a time)
+- Worker threads emit signals for progressive updates
+- Example: `InstalledPackagesWorker` loads packages in batches
+
+**Worker Thread Pattern**:
+```python
+class DataWorker(QThread):
+    initial_loaded = pyqtSignal(list)
+    remaining_loaded = pyqtSignal(list)
+    
+    def run(self):
+        initial = data[:20]
+        self.initial_loaded.emit(initial)
+        
+        for i in range(20, total, 50):
+            batch = data[i:i+50]
+            self.remaining_loaded.emit(batch)
+```
 
 ### Background Processing
 - Use QThread for long operations

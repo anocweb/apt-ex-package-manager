@@ -1,7 +1,31 @@
 """Home panel controller"""
 from PyQt6.QtWidgets import QGridLayout, QLabel, QPushButton, QComboBox
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from .base_panel import BasePanel
+
+
+class PackageLoadWorker(QThread):
+    """Worker thread for loading packages"""
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+    
+    def __init__(self, package_manager, operation, **kwargs):
+        super().__init__()
+        self.package_manager = package_manager
+        self.operation = operation
+        self.kwargs = kwargs
+    
+    def run(self):
+        try:
+            if self.operation == 'search':
+                result = self.package_manager.search_packages(**self.kwargs)
+            elif self.operation == 'get_installed':
+                result = self.package_manager.get_installed_packages(**self.kwargs)
+            else:
+                result = []
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 class HomePanel(BasePanel):
@@ -12,6 +36,7 @@ class HomePanel(BasePanel):
     
     def __init__(self, ui_file, package_manager, lmdb_manager, logging_service, app_settings):
         self.current_packages = []
+        self.worker = None
         super().__init__(ui_file, package_manager, lmdb_manager, logging_service, app_settings)
     
     def setup_ui(self):
@@ -51,13 +76,26 @@ class HomePanel(BasePanel):
         query = self.search_input.text()
         selected_backend = self.backend_selector.currentData()
         
+        # Cancel existing worker
+        if self.worker and self.worker.isRunning():
+            self.worker.terminate()
+            self.worker.wait()
+        
+        # Show loading state
+        self.show_loading()
+        
+        # Start worker thread
         if query:
             self.logger.info(f"Searching packages: {query} (backend: {selected_backend or 'all'})")
-            self.current_packages = self.package_manager.search_packages(query, backend=selected_backend)
+            self.worker = PackageLoadWorker(self.package_manager, 'search', 
+                                           query=query, backend=selected_backend)
         else:
-            self.current_packages = self.package_manager.get_installed_packages(backend=selected_backend or 'apt')
+            self.worker = PackageLoadWorker(self.package_manager, 'get_installed',
+                                           backend=selected_backend or 'apt')
         
-        self.update_display()
+        self.worker.finished.connect(self.on_packages_loaded)
+        self.worker.error.connect(self.on_load_error)
+        self.worker.start()
     
     def on_backend_changed(self, index):
         """Handle backend selector change"""
@@ -67,8 +105,32 @@ class HomePanel(BasePanel):
     
     def load_initial_packages(self):
         """Load initial featured packages"""
-        self.current_packages = self.package_manager.get_installed_packages(backend='apt', limit=6)
+        self.show_loading()
+        self.worker = PackageLoadWorker(self.package_manager, 'get_installed',
+                                       backend='apt', limit=6)
+        self.worker.finished.connect(self.on_packages_loaded)
+        self.worker.error.connect(self.on_load_error)
+        self.worker.start()
+    
+    def on_packages_loaded(self, packages):
+        """Handle packages loaded from worker"""
+        self.current_packages = packages
         self.update_display()
+    
+    def on_load_error(self, error):
+        """Handle load error"""
+        self.logger.error(f"Error loading packages: {error}")
+        self.current_packages = []
+        self.update_display()
+    
+    def show_loading(self):
+        """Show loading indicator"""
+        for i in reversed(range(self.package_layout.count())):
+            self.package_layout.itemAt(i).widget().setParent(None)
+        
+        loading_label = QLabel("Loading packages...")
+        loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.package_layout.addWidget(loading_label, 0, 0, 1, 3)
     
     def update_display(self):
         """Update package display"""
