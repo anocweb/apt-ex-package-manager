@@ -33,6 +33,10 @@
 - [AI-Assisted Development](developer/AI_ASSISTED_DEVELOPMENT.md) - Using AI tools
 - [MVC Quick Reference](developer/MVC_QUICK_REFERENCE.md) - Working with MVC architecture
 
+## Planning
+- [Privilege Escalation Implementation](planning/PRIVILEGE_ESCALATION_IMPLEMENTATION.md) - PolicyKit + D-Bus helper system
+- [Privilege Escalation Quick Reference](planning/PRIVILEGE_ESCALATION_QUICK_REF.md) - Quick reference guide
+
 ## Implementation Notes
 - [Refactoring Summary](REFACTORING_SUMMARY.md) - View architecture refactoring
 - [Widget Standardization](WIDGET_STANDARDIZATION.md) - List item widget improvements

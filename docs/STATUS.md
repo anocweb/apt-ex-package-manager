@@ -57,6 +57,13 @@
 
 ## Planned (Design Phase)
 
+### Privilege Escalation System
+- 📋 PolicyKit + D-Bus privilege helpers
+  - Credential caching across operations (5 minutes)
+  - Per-backend privilege helpers
+  - Fallback to pkexec when helper unavailable
+  - See [Implementation Plan](planning/PRIVILEGE_ESCALATION_IMPLEMENTATION.md)
+
 ### Additional Backends
 - 📋 Flatpak backend plugin
   - Remote management

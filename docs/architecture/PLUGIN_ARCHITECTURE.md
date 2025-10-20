@@ -208,6 +208,30 @@ class BasePackageController(ABC):
         reconnect to services, etc.
         """
         pass
+    
+    # === Privilege Escalation ===
+    
+    def get_privilege_helper(self):
+        """Return privilege helper client for this backend (optional)
+        
+        Returns BasePrivilegeHelper instance if backend uses privilege
+        helper for elevated operations, None otherwise.
+        
+        Privilege helpers enable credential caching across multiple
+        operations without elevating the entire application.
+        """
+        return None
+    
+    def requires_elevation(self, operation: str) -> bool:
+        """Check if operation requires privilege elevation
+        
+        Args:
+            operation: Operation name ('install', 'remove', 'update', etc.)
+        
+        Returns:
+            True if operation requires root/admin privileges
+        """
+        return False
 ```
 
 ### 2. Plugin Registration
@@ -696,6 +720,72 @@ All plugins MUST return standardized data structures. See [Data Structures Docum
 4. **Flexibility**: Enable/disable backends at runtime
 5. **User Choice**: Users can install only needed backends
 6. **Community**: Third-party developers can create plugins
+
+## Privilege Escalation Integration
+
+### Overview
+
+Plugins can integrate with privilege escalation helpers to maintain elevated privileges across multiple operations without elevating the entire application. This provides better UX by reducing authentication prompts.
+
+### Architecture
+
+```
+Main Application (Unprivileged)
+    ↓
+PackageManager
+    ↓
+Backend Plugins (Unprivileged)
+    ↓
+Privilege Helpers (D-Bus Services, Root)
+    ↓
+System Package Managers
+```
+
+### Plugin Integration
+
+Plugins can optionally provide privilege helpers:
+
+```python
+from services.privilege.base_helper import BasePrivilegeHelper
+
+class APTPlugin(BasePackageController):
+    def __init__(self, lmdb_manager=None, logging_service=None):
+        self._privilege_helper = APTPrivilegeHelper(logging_service)
+    
+    def get_privilege_helper(self) -> Optional[BasePrivilegeHelper]:
+        """Return privilege helper client for this backend"""
+        return self._privilege_helper
+    
+    def requires_elevation(self, operation: str) -> bool:
+        """Check if operation requires privilege elevation"""
+        return operation in ['install', 'remove', 'update']
+    
+    def install_package(self, package_name):
+        # Try helper first, fallback to pkexec
+        if self._privilege_helper.is_available():
+            success, message = self._privilege_helper.install_package(package_name)
+            return success
+        
+        # Fallback to pkexec
+        return self._install_via_pkexec(package_name)
+```
+
+### Backend-Specific Helpers
+
+- **APT**: Uses D-Bus helper with PolicyKit (credential caching)
+- **Flatpak**: No helper needed (supports user-level installs)
+- **AppImage**: No helper needed (no elevation required)
+
+### Benefits
+
+- **Credential Caching**: PolicyKit caches credentials for 5 minutes
+- **Backend Independence**: Each plugin decides if/how to handle privileges
+- **Graceful Fallback**: Falls back to pkexec if helper unavailable
+- **Security**: Main application remains unprivileged
+
+### Implementation Details
+
+See [Privilege Escalation Implementation Plan](../planning/PRIVILEGE_ESCALATION_IMPLEMENTATION.md) for complete implementation details.
 
 ## Future Enhancements
 
