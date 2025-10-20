@@ -6,22 +6,28 @@
 - ✅ APT package listing and browsing
 - ✅ Package search by name and description
 - ✅ Package installation and removal
+- ✅ Package updates (individual and system-wide)
 - ✅ Category browsing (APT sections)
-- ✅ Package details view
+- ✅ Package details view with full metadata
 - ✅ Installed packages view
-- ✅ Updates view
+- ✅ Updates view with security indicators
+- ✅ Double-click to view package details
 
 ### Technical Implementation
 - ✅ Qt6 UI with KDE Plasma 6 styling
-- ✅ LMDB caching system
+- ✅ LMDB caching system with section indexes
 - ✅ Context actions system (dynamic header buttons)
 - ✅ APT section to category mapping
-- ✅ Package cache with TTL validation
+- ✅ Package cache (startup refresh only)
 - ✅ Logging service
 - ✅ Plugin architecture (base implementation)
 - ✅ Panel controller architecture
-- ✅ Worker thread system
-- ✅ Standardized list item widgets
+- ✅ Worker thread system for all operations
+- ✅ Standardized list item widgets (125px height)
+- ✅ Virtual scrolling for large lists
+- ✅ Background package operations (install/remove/update)
+- ✅ Privilege escalation with pkexec
+- ✅ Scroll position preservation on refresh
 
 ### User Interface
 - ✅ Main window with sidebar navigation (refactored)
@@ -112,7 +118,7 @@
 
 | Backend | Status | Features |
 |---------|--------|----------|
-| **APT** | ✅ Working | Search, install, remove, updates, categories (as plugin) |
+| **APT** | ✅ Working | Search, install, remove, update, update all, categories, full package details (as plugin) |
 | **Flatpak** | 🔄 Stub | Plugin structure ready, needs implementation |
 | **Pacman** | 💡 Future | Possible future addition |
 | **YAY/AUR** | 💡 Future | Possible future addition |

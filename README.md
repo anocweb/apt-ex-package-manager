@@ -1,6 +1,6 @@
 # Apt-Ex Package Manager
 
-> **⚠️ PRE-ALPHA SOFTWARE**: This project is in early development. Features are incomplete and the application is not ready for production use. Use at your own risk for testing purposes only.
+> **⚠️ ALPHA SOFTWARE**: This project is in active development. Core APT functionality is working but should be used with caution. Always review operations before confirming.
 
 ## Overview
 Apt-Ex Package Manager is a modern user interface application designed to facilitate the management of the Advanced Package Tool (APT) on Linux systems. This application provides an intuitive graphical interface for users to install, remove, and update packages seamlessly.
@@ -67,13 +67,18 @@ python src/main.py --dev-logging
 - **Optional**: python3-apt (for APT backend on Debian/Ubuntu systems)
 
 ## Current Features
-- **APT Package Management**: Browse, search, install, and remove APT packages
+- **APT Package Management**: Browse, search, install, remove, and update APT packages
+- **Package Updates**: Individual package updates and system-wide upgrade functionality
+- **Package Details**: Comprehensive package information including dependencies, size, maintainer, and more
 - **Category Browsing**: Navigate packages by APT sections (games, development, etc.)
 - **Package Search**: Fast search across package names and descriptions
-- **LMDB Caching**: High-performance caching for quick package access
+- **LMDB Caching**: High-performance caching with section indexes for instant browsing
+- **Virtual Scrolling**: Efficient rendering of large package lists (2000+ items)
+- **Background Operations**: Non-blocking install/remove/update with progress indicators
 - **KDE Plasma 6 Integration**: Native look and feel with system theme support
 - **Context Actions**: Dynamic header buttons for page-specific operations
 - **Plugin Architecture**: Extensible backend system for multiple package managers
+- **Security Updates**: Visual indicators for security-related updates
 
 ## Planned Features
 - **Multi-Backend Plugin Architecture**: Extensible system for multiple package managers
