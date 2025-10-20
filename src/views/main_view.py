@@ -382,12 +382,56 @@ class MainView(QMainWindow):
     def update_package(self, package_name):
         """Update a package"""
         self.logger.info(f"User requested update: {package_name}")
-        self.status_service.show_message(f"Updating {package_name}...", 3000)
+        
+        from workers.package_operation_worker import PackageOperationWorker
+        backend_obj = self.package_manager.get_backend('apt')
+        
+        if not backend_obj:
+            self.status_service.show_message("APT backend not available", 3000)
+            return
+        
+        self.operation_worker = PackageOperationWorker(backend_obj, 'update', package_name)
+        self.operation_worker.finished.connect(self.on_update_finished)
+        self.operation_worker.error.connect(self.on_operation_error)
+        self.operation_worker.start()
+        
+        self.status_service.start_animation(f"Updating {package_name}")
+    
+    def on_update_finished(self, success, package_name):
+        """Handle update completion"""
+        self.status_service.stop_animation()
+        if success:
+            self.status_service.show_message(f"Successfully updated {package_name}", 3000)
+            self.refresh_current_panel()
+        else:
+            self.status_service.show_message(f"Failed to update {package_name}", 3000)
     
     def update_all_packages(self):
         """Update all packages"""
         self.logger.info("Starting system-wide package update")
-        self.status_service.show_message("Updating all packages...", 3000)
+        
+        from workers.package_operation_worker import PackageOperationWorker
+        backend_obj = self.package_manager.get_backend('apt')
+        
+        if not backend_obj:
+            self.status_service.show_message("APT backend not available", 3000)
+            return
+        
+        self.operation_worker = PackageOperationWorker(backend_obj, 'update_all', None)
+        self.operation_worker.finished.connect(self.on_update_all_finished)
+        self.operation_worker.error.connect(self.on_operation_error)
+        self.operation_worker.start()
+        
+        self.status_service.start_animation("Updating all packages")
+    
+    def on_update_all_finished(self, success, _):
+        """Handle update all completion"""
+        self.status_service.stop_animation()
+        if success:
+            self.status_service.show_message("Successfully updated all packages", 3000)
+            self.refresh_current_panel()
+        else:
+            self.status_service.show_message("Failed to update packages", 3000)
     
     def update_updates_button(self, count):
         """Update the updates button text with count"""

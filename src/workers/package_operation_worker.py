@@ -20,6 +20,10 @@ class PackageOperationWorker(QThread):
                 result = self.backend.install_package(self.package_name)
             elif self.operation == 'remove':
                 result = self.backend.remove_package(self.package_name)
+            elif self.operation == 'update':
+                result = self.backend.update_package(self.package_name)
+            elif self.operation == 'update_all':
+                result = self.backend.update_all_packages()
             else:
                 result = False
             

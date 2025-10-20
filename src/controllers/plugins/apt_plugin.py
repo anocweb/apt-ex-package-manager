@@ -110,6 +110,52 @@ class APTPlugin(BasePackageController):
             if self.logger:
                 self.logger.error(f"Error removing {package_name}: {e}")
             return False
+    
+    def update_package(self, package_name):
+        """Update a single package"""
+        if self.logger:
+            self.logger.debug(f"APT update function called for {package_name}")
+        
+        try:
+            import subprocess
+            
+            # Use pkexec to run apt-get install (which upgrades if already installed)
+            cmd = ['pkexec', 'apt-get', 'install', '--only-upgrade', '-y', package_name]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.log(f"Successfully updated {package_name}")
+                return True
+            else:
+                self.log(f"Failed to update {package_name}: {result.stderr}")
+                return False
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error updating {package_name}: {e}")
+            return False
+    
+    def update_all_packages(self):
+        """Update all packages"""
+        if self.logger:
+            self.logger.debug("APT update all function called")
+        
+        try:
+            import subprocess
+            
+            # Use pkexec to run apt-get upgrade
+            cmd = ['pkexec', 'apt-get', 'upgrade', '-y']
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.log("Successfully updated all packages")
+                return True
+            else:
+                self.log(f"Failed to update packages: {result.stderr}")
+                return False
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error updating packages: {e}")
+            return False
 
     def search_packages(self, query):
         if self.logger:
