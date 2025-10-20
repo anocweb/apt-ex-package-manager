@@ -14,6 +14,7 @@
 - [APT Section Mapping](features/APT_SECTION_MAPPING.md) - Category mapping
 
 ## Architecture
+- [Startup Workflow](architecture/STARTUP_WORKFLOW.md) - Application initialization sequence
 - [View Architecture](architecture/VIEW_ARCHITECTURE.md) - Panel controllers and worker threads
 - [Database Architecture](architecture/DATABASE_ARCHITECTURE.md) - LMDB caching system
 - [Plugin Architecture](architecture/PLUGIN_ARCHITECTURE.md) - Multi-backend plugin system
@@ -21,6 +22,10 @@
 - [Service Container](architecture/SERVICE_CONTAINER.md) - Dependency injection
 - [Data Structures](architecture/DATA_STRUCTURES.md) - Data models
 - [Repository Implementation](architecture/REPOSITORY_IMPLEMENTATION.md) - Repository management
+
+## Plugins
+- [Plugin Documentation](plugins/) - Backend plugin documentation
+  - [APT Plugin](plugins/apt/) - APT package management
 
 ## Developer Guides
 - [Panel Development Guide](developer/PANEL_DEVELOPMENT_GUIDE.md) - Creating new panels
@@ -33,3 +38,9 @@
 
 ## Examples
 - [Plugin Example](examples/PLUGIN_EXAMPLE.md) - Reference plugin implementation
+
+## Plugin-Specific Documentation
+Each plugin has its own documentation directory under `plugins/`:
+- **APT**: Lock management, caching, category mapping
+- **Flatpak**: Coming soon
+- **AppImage**: Coming soon

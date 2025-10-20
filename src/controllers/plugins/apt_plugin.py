@@ -1,6 +1,7 @@
 from controllers.base_controller import BasePackageController
 from models.package_model import Package
 from typing import List, Set, Dict, Optional
+from utils.apt_lock import APTLock
 
 class APTPlugin(BasePackageController):
     """APT package management backend plugin"""
@@ -8,6 +9,7 @@ class APTPlugin(BasePackageController):
     def __init__(self, lmdb_manager=None, logging_service=None):
         self.lmdb_manager = lmdb_manager
         self.logger = logging_service.get_logger('apt') if logging_service else None
+        self._apt_lock = None
     
     @property
     def backend_id(self) -> str:
@@ -36,14 +38,28 @@ class APTPlugin(BasePackageController):
     def install_package(self, package_name):
         if self.logger:
             self.logger.debug(f"APT install function called for {package_name}")
-        self.log(f"Installing package: {package_name}")
-        return True
+        
+        with APTLock(logger=self.logger) as lock:
+            if not lock.is_locked():
+                self.log(f"Failed to acquire APT lock for installing {package_name}")
+                return False
+            
+            self.log(f"Installing package: {package_name}")
+            # Actual installation logic here
+            return True
 
     def remove_package(self, package_name):
         if self.logger:
             self.logger.debug(f"APT remove function called for {package_name}")
-        self.log(f"Removing package: {package_name}")
-        return True
+        
+        with APTLock(logger=self.logger) as lock:
+            if not lock.is_locked():
+                self.log(f"Failed to acquire APT lock for removing {package_name}")
+                return False
+            
+            self.log(f"Removing package: {package_name}")
+            # Actual removal logic here
+            return True
 
     def search_packages(self, query):
         if self.logger:
@@ -56,14 +72,28 @@ class APTPlugin(BasePackageController):
     def get_installed_packages(self, limit: int = None, offset: int = 0):
         if self.logger:
             self.logger.debug("Getting installed packages from APT")
-        packages = [
-            Package("firefox", "100.0", "Web browser", "apt"),
-            Package("vim", "8.2", "Text editor", "apt"),
-            Package("git", "2.34", "Version control", "apt")
-        ]
-        if limit:
-            return packages[offset:offset+limit]
-        return packages[offset:]
+        try:
+            import apt
+            cache = apt.Cache()
+            packages = []
+            
+            for package in cache:
+                if package.is_installed:
+                    packages.append(Package(
+                        name=package.name,
+                        version=package.installed.version,
+                        description=package.installed.summary if hasattr(package.installed, 'summary') else "",
+                        backend="apt"
+                    ))
+            
+            # Apply pagination
+            if limit:
+                return packages[offset:offset+limit]
+            return packages[offset:]
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error getting installed packages: {e}")
+            return []
     
     def get_installed_packages_list(self, lmdb_manager, limit: int = None, offset: int = 0) -> List[dict]:
         """Get list of installed packages with minimal info for display"""

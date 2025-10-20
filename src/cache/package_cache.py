@@ -1,6 +1,6 @@
 import json
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from cache.lmdb_manager import LMDBManager
 from cache.data_structures import PackageData, IndexData
 
@@ -127,15 +127,10 @@ class PackageCacheModel:
         self.lmdb.clear_db(self.db_name)
         self._clear_backend_indexes()
     
-    def is_cache_valid(self, max_age_hours: int = 24) -> bool:
-        """Check if cache is still valid"""
+    def is_cache_empty(self) -> bool:
+        """Check if cache is empty"""
         packages = self.get_all_packages(limit=1)
-        if not packages:
-            return False
-        
-        last_updated = datetime.fromisoformat(packages[0].last_updated)
-        age = datetime.now() - last_updated
-        return age < timedelta(hours=max_age_hours)
+        return len(packages) == 0
     
     def _update_indexes(self, package: PackageData):
         """Update search indexes for package"""

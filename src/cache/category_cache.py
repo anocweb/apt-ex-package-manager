@@ -1,6 +1,6 @@
 import json
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from cache.lmdb_manager import LMDBManager
 from cache.data_structures import CategoryData
 
@@ -74,12 +74,7 @@ class CategoryCacheModel:
         """Clear all categories for this backend"""
         self.lmdb.clear_db(self.db_name)
     
-    def is_cache_valid(self, max_age_hours: int = 24) -> bool:
-        """Check if cache is still valid"""
+    def is_cache_empty(self) -> bool:
+        """Check if cache is empty"""
         categories = self.get_all_categories()
-        if not categories:
-            return False
-        
-        last_updated = datetime.fromisoformat(categories[0].last_updated)
-        age = datetime.now() - last_updated
-        return age < timedelta(hours=max_age_hours)
+        return len(categories) == 0

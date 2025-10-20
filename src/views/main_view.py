@@ -300,24 +300,33 @@ class MainView(QMainWindow):
         self.populate_caches_on_startup()
     
     def populate_caches_on_startup(self):
-        """Populate caches if needed"""
-        # TODO: Check what needs updating
-        update_categories = False
-        update_packages = False
-        update_installed = False
+        """Populate caches on startup or when refresh is requested"""
+        from cache import PackageCacheModel
         
-        if update_categories or update_packages or update_installed:
-            self.cache_updating = True
-            self.status_service.start_animation("Updating package data")
-            
-            self.cache_worker = CacheUpdateWorker(
-                update_categories, update_packages, update_installed,
-                self.logging_service, self.lmdb_manager
-            )
-            self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
-            self.cache_worker.error_signal.connect(self.on_cache_update_error)
-            self.cache_worker.progress_signal.connect(self.status_service.update_message)
-            self.cache_worker.start()
+        # Check if cache is empty
+        pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+        cache_is_empty = pkg_cache.is_cache_empty()
+        
+        # Always update on startup or if cache is empty
+        update_categories = True
+        update_packages = True
+        update_installed = True
+        
+        self.cache_updating = True
+        
+        if cache_is_empty:
+            self.status_service.start_animation("Building package cache")
+        else:
+            self.status_service.start_animation("Refreshing package data")
+        
+        self.cache_worker = CacheUpdateWorker(
+            update_categories, update_packages, update_installed,
+            self.logging_service, self.lmdb_manager
+        )
+        self.cache_worker.finished_signal.connect(self.on_cache_update_finished)
+        self.cache_worker.error_signal.connect(self.on_cache_update_error)
+        self.cache_worker.progress_signal.connect(self.status_service.update_message)
+        self.cache_worker.start()
     
     def on_cache_update_finished(self):
         """Handle cache update completion"""
