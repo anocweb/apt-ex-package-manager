@@ -12,19 +12,6 @@
   </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <item>
-    <widget class="QPushButton" name="backButton">
-     <property name="maximumSize">
-      <size>
-       <width>100</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="text">
-      <string>← Back</string>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="widgetResizable">
       <bool>true</bool>
@@ -162,12 +149,51 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="descriptionLabel">
+        <widget class="QLabel" name="descriptionTitleLabel">
+         <property name="font">
+          <font>
+           <pointsize>14</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
          <property name="text">
           <string>Description</string>
          </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="descriptionLabel">
+         <property name="text">
+          <string>Package description</string>
+         </property>
          <property name="wordWrap">
           <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="detailsTitleLabel">
+         <property name="font">
+          <font>
+           <pointsize>14</pointsize>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Details</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="detailsLabel">
+         <property name="text">
+          <string>Package details</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::TextFormat::RichText</enum>
          </property>
         </widget>
        </item>

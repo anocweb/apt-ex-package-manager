@@ -290,6 +290,50 @@ class APTPlugin(BasePackageController):
         except:
             return False
     
+    def get_package_details(self, package_name: str) -> Optional[Dict]:
+        """Get detailed information for a specific package"""
+        try:
+            import apt
+            cache = apt.Cache()
+            
+            if package_name not in cache:
+                return None
+            
+            package = cache[package_name]
+            candidate = package.candidate or package.installed
+            
+            if not candidate:
+                return None
+            
+            details = {
+                'backend': 'apt',
+                'name': package.name,
+                'version': candidate.version,
+                'description': candidate.description or '',
+                'summary': candidate.summary or '',
+                'section': candidate.section or '',
+                'architecture': candidate.architecture or '',
+                'installed_size': getattr(candidate, 'installed_size', 0),
+                'size': getattr(candidate, 'size', 0),
+                'installed': package.is_installed
+            }
+            
+            if hasattr(candidate, 'record') and candidate.record:
+                record = candidate.record
+                details['homepage'] = record.get('Homepage', '')
+                details['maintainer'] = record.get('Maintainer', '')
+                details['priority'] = record.get('Priority', '')
+                details['source'] = record.get('Source', '')
+                details['depends'] = record.get('Depends', '')
+                details['recommends'] = record.get('Recommends', '')
+                details['license'] = record.get('License', '')
+            
+            return details
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error getting package details for {package_name}: {e}")
+            return None
+    
     def get_all_packages_for_cache(self) -> List[Dict]:
         """Get all package details for caching"""
         self.log("Loading all APT packages for cache")
