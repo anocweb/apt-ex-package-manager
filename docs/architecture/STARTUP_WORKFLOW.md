@@ -34,15 +34,26 @@ main() → QApplication → ApplicationController → app.exec()
 
 **Sequence:**
 ```
-_setup_theme() → _initialize_services() → _populate_cache() → _create_main_view() → _setup_dev_mode()
+_show_splash() → _setup_theme() → _initialize_services() → _populate_cache() → _create_main_view() → _setup_dev_mode() → _hide_splash()
 ```
 
-#### 2.1 Theme Setup
+#### 2.1 Splash Screen Display
+**Method:** `_show_splash()`
+
+**Creates and displays splash screen:**
+- Custom `QSplashScreen` with progress bar
+- App logo/icon at top
+- Status label for current operation
+- Detail label for package counts
+- Progress bar (0-100%)
+- Stays on top, centered on screen
+
+#### 2.2 Theme Setup
 - Create `ThemeService`
 - Set application icon
 - Register in service container
 
-#### 2.2 Service Initialization
+#### 2.3 Service Initialization
 **Order matters** - services depend on each other:
 
 1. **LoggingService**
@@ -60,7 +71,7 @@ _setup_theme() → _initialize_services() → _populate_cache() → _create_main
    - Discovers and registers backend plugins
    - Register in container as `'package_manager'`
 
-#### 2.3 Cache Population
+#### 2.4 Cache Population
 **Method:** `_populate_cache()`
 
 **Synchronous cache update before UI loads:**
@@ -76,7 +87,7 @@ _setup_theme() → _initialize_services() → _populate_cache() → _create_main
 - Makes splash screen more valuable (shows during actual work)
 - User sees fully populated app immediately
 
-#### 2.4 Main View Creation
+#### 2.5 Main View Creation
 - Create `MainView` with injected dependencies:
   - package_manager
   - lmdb_manager
@@ -84,7 +95,7 @@ _setup_theme() → _initialize_services() → _populate_cache() → _create_main
   - dev_logging flag
   - stdout_log_level
 
-#### 2.5 Dev Mode Setup
+#### 2.6 Dev Mode Setup
 - If `--dev-logging` flag set, enable debug features
 
 ---
@@ -232,6 +243,16 @@ Connect panel-specific signals:
 
 ---
 
+#### 2.7 Splash Screen Cleanup
+**Method:** `_hide_splash()`
+
+**Closes splash screen:**
+- Calls `splash.finish(main_view)`
+- Waits for main window to appear
+- Smooth transition from splash to main window
+
+---
+
 ## Initialization Timeline
 
 ```
@@ -239,36 +260,38 @@ Connect panel-specific signals:
        └─ Parse arguments
        └─ Create QApplication
 
-10ms   ApplicationController.initialize()
-       └─ ThemeService setup
-       └─ LoggingService init
-       └─ LMDBManager init (open database)
+10ms   Show splash screen
+       └─ Display with "Starting up..." message
+       └─ Progress: 0%
+
+20ms   ApplicationController.initialize()
+       └─ ThemeService setup (splash: "Setting up theme...")
+       └─ LoggingService init (splash: "Initializing services...")
+       └─ LMDBManager init
 
 50ms   PackageManager init
-       └─ Discover plugins (scan directories)
+       └─ Discover plugins (splash: "Discovering plugins...")
        └─ Load plugin modules
        └─ Register available backends
+       └─ Progress: 5%
 
-100ms  MainView init
-       └─ Load main_window.ui
-       └─ Load panel UI files
-       └─ Setup navigation
-       └─ Connect signals
-
-150ms  Cache population (BLOCKING - 5-30 seconds)
-       └─ Check if cache is empty
-       └─ Load APT packages synchronously
-       └─ Cache packages in batches
-       └─ Update installed status
-       └─ Log progress
+100ms  Cache population (BLOCKING - 5-30 seconds)
+       └─ Check cache (splash: "Checking cache status...", 10%)
+       └─ Load APT packages (splash: "Loading package database...", 15%)
+       └─ Cache in batches (splash: "Caching packages...", 15-85%)
+       │  └─ Updates: "Cached X / Y packages"
+       └─ Update installed status (splash: "Updating installed status...", 90%)
+       └─ Progress: 95%
 
 5-30s  MainView init (after cache is ready)
-       └─ Load main_window.ui
+       └─ Load main_window.ui (splash: "Loading user interface...", 98%)
        └─ Load panel UI files
        └─ Setup navigation
        └─ Connect signals
+       └─ Progress: 100%
 
 5-30s  Show main window
+       └─ Hide splash screen
        └─ Display home panel
        └─ Application ready with full data
 ```
@@ -346,8 +369,8 @@ All UI loaded from `.ui` files:
 **Startup timing:**
 - Cache population is BLOCKING (5-30 seconds)
 - Happens before main window appears
-- User sees nothing until cache is ready
-- **This is where a splash screen would be valuable**
+- **Splash screen shows progress during cache loading**
+- User sees real-time progress and status updates
 
 **After startup (background threads):**
 - Package search across backends
@@ -367,3 +390,29 @@ All UI loaded from `.ui` files:
 - Red borders on all widgets
 - Visual debugging of layout
 - Identify widget boundaries
+
+## Splash Screen
+
+**Design:**
+- 500x300 pixels, centered on screen
+- Dark background (matches KDE Plasma dark theme)
+- App icon/logo at top (64x64)
+- App title "Apt-Ex Package Manager"
+- Determinate progress bar (0-100%)
+- Status label (current operation)
+- Detail label (package counts)
+
+**Progress Stages:**
+- 0-5%: Starting up
+- 5-10%: Initializing services
+- 10-15%: Checking cache
+- 15-85%: Caching packages (with counts)
+- 85-90%: Updating installed status
+- 90-98%: Loading UI
+- 98-100%: Ready
+
+**User Experience:**
+- Always visible during startup
+- Shows real progress, not fake animation
+- Provides feedback on what's happening
+- Smooth transition to main window

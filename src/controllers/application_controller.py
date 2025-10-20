@@ -6,6 +6,7 @@ from services.logging_service import LoggingService
 from cache import LMDBManager, PackageCacheModel
 from controllers.package_manager import PackageManager
 from views.main_view import MainView
+from views.splash_screen import SplashScreen
 
 class ApplicationController:
     """Coordinate application lifecycle and service initialization"""
@@ -15,23 +16,43 @@ class ApplicationController:
         self.config = config
         self.container = ServiceContainer()
         self.main_view = None
+        self.splash = None
     
     def initialize(self) -> None:
         """Initialize all services and components"""
+        self._show_splash()
         self._setup_theme()
         self._initialize_services()
         self._populate_cache()
         self._create_main_view()
         self._setup_dev_mode()
     
+    def _show_splash(self) -> None:
+        """Show splash screen"""
+        self.splash = SplashScreen()
+        self.splash.show()
+        self.splash.set_status("Starting up...")
+    
+    def _hide_splash(self) -> None:
+        """Hide splash screen"""
+        if self.splash:
+            self.splash.finish(self.main_view)
+            self.splash = None
+    
     def _setup_theme(self) -> None:
         """Set up theme service and application icon"""
+        if self.splash:
+            self.splash.set_status("Setting up theme...")
+        
         theme_service = ThemeService(self.app)
         theme_service.setup_application_icon()
         self.container.register('theme', theme_service)
     
     def _initialize_services(self) -> None:
         """Initialize core services"""
+        if self.splash:
+            self.splash.set_status("Initializing services...")
+        
         # Logging service
         logging_service = LoggingService(stdout_log_level=self.config.stdout_log_level)
         self.container.register('logging', logging_service)
@@ -41,6 +62,8 @@ class ApplicationController:
         self.container.register('lmdb', lmdb_manager)
         
         # Package manager
+        if self.splash:
+            self.splash.set_status("Discovering plugins...")
         package_manager = PackageManager(lmdb_manager, logging_service)
         self.container.register('package_manager', package_manager)
     
@@ -55,20 +78,30 @@ class ApplicationController:
         logger = logging_service.get_logger('startup')
         logger.info("Checking cache status...")
         
+        if self.splash:
+            self.splash.update_progress(5, "Checking cache status...")
+        
         # Check if cache is empty
         pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
         cache_is_empty = pkg_cache.is_cache_empty()
         
         if cache_is_empty:
             logger.info("Cache is empty, building initial cache...")
+            if self.splash:
+                self.splash.update_progress(10, "Building package cache...")
         else:
             logger.info("Refreshing package cache...")
+            if self.splash:
+                self.splash.update_progress(10, "Refreshing package cache...")
         
         # Update cache synchronously
         apt_controller = APTController(logging_service=logging_service)
         
         # Load packages
         logger.info("Loading package details from APT...")
+        if self.splash:
+            self.splash.update_progress(15, "Loading package database...")
+        
         packages = apt_controller.get_all_packages_for_cache()
         logger.info(f"Loaded {len(packages)} packages")
         
@@ -97,15 +130,32 @@ class ApplicationController:
                     metadata=pkg_data.get('metadata', {})
                 )
                 pkg_cache.add_package(package)
+            
+            # Update progress (15% to 85% for caching)
+            progress = 15 + int((batch_end / total) * 70)
+            if self.splash:
+                self.splash.update_progress(
+                    progress,
+                    "Caching packages...",
+                    f"Cached {batch_end:,} / {total:,} packages"
+                )
         
         # Update installed status
         logger.info("Updating installed package status...")
+        if self.splash:
+            self.splash.update_progress(90, "Updating installed status...")
+        
         apt_controller.update_installed_status(lmdb_manager)
         
         logger.info("Cache population complete")
+        if self.splash:
+            self.splash.update_progress(95, "Cache ready", f"Loaded {total:,} packages")
     
     def _create_main_view(self) -> None:
         """Create main view with dependency injection"""
+        if self.splash:
+            self.splash.update_progress(98, "Loading user interface...")
+        
         self.main_view = MainView(
             self.container.get('package_manager'),
             self.container.get('lmdb'),
@@ -113,6 +163,9 @@ class ApplicationController:
             dev_logging=self.config.dev_logging,
             stdout_log_level=self.config.stdout_log_level
         )
+        
+        if self.splash:
+            self.splash.update_progress(100, "Ready")
     
     def _setup_dev_mode(self) -> None:
         """Configure development mode features"""
@@ -122,6 +175,9 @@ class ApplicationController:
     def show_main_window(self) -> None:
         """Show the main application window"""
         if self.main_view:
+            if self.splash:
+                self.splash.finish(self.main_view)
+                self.splash = None
             self.main_view.show()
     
     def cleanup(self) -> None:
