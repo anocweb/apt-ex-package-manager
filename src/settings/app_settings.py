@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QSettings
-from typing import Any, Optional
+from typing import Any, Optional, List
 import os
 
 class AppSettings:
@@ -13,6 +13,7 @@ class AppSettings:
         """Load default settings if not already set"""
         defaults = {
             'default_repository': 'apt',
+            'backend_priority': [],
             'sidebar_width': 220,
             'last_selected_page': 'home',
             'plugin_settings': {},
@@ -122,3 +123,20 @@ class AppSettings:
     def set_odrs_enabled(self, enabled: bool):
         """Set ODRS (Open Desktop Ratings Service) preference"""
         self.set('odrs_enabled', enabled)
+    
+    def get_backend_priority(self) -> List[str]:
+        """Get ordered list of backend IDs by priority"""
+        priority = self.get('backend_priority', [])
+        return priority if isinstance(priority, list) else []
+    
+    def set_backend_priority(self, backends: List[str]):
+        """Set ordered list of backend IDs by priority"""
+        self.set('backend_priority', backends)
+    
+    def get_backend_setting(self, backend_id: str, key: str, default=None):
+        """Get backend-specific setting"""
+        return self.get_plugin_setting(backend_id, key, default)
+    
+    def set_backend_setting(self, backend_id: str, key: str, value):
+        """Set backend-specific setting"""
+        self.set_plugin_setting(backend_id, key, value)

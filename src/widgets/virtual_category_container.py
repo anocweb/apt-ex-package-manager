@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QMainWindow
+from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QMainWindow, QLabel
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from widgets.package_list_item import PackageListItem
 from widgets.installed_list_item import InstalledListItem
@@ -61,6 +61,11 @@ class VirtualCategoryContainer(QScrollArea):
                 child.widget().setParent(None)
         
         if not self.all_packages:
+            # Show "No packages available" message
+            no_packages_label = QLabel("No packages available in this category")
+            no_packages_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            no_packages_label.setStyleSheet("color: gray; font-size: 14px; padding: 40px;")
+            self.container_layout.addWidget(no_packages_label)
             return
         
         # Calculate total height needed

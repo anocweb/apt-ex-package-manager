@@ -8,9 +8,10 @@ import sys
 import importlib.util
 
 class PackageManager:
-    def __init__(self, lmdb_manager: LMDBManager, logging_service=None):
+    def __init__(self, lmdb_manager: LMDBManager, logging_service=None, app_settings=None):
         self.lmdb_manager = lmdb_manager
         self.logging_service = logging_service
+        self.app_settings = app_settings
         self.backends: Dict[str, BasePackageController] = {}
         self.default_backend = 'apt'
         
@@ -19,6 +20,10 @@ class PackageManager:
         
         # Auto-discover and register plugins
         self._discover_plugins()
+        
+        # Load backend priority from settings
+        if app_settings:
+            self._load_backend_priority()
     
     def _discover_plugins(self):
         """Auto-discover and register backend plugins"""
@@ -77,15 +82,51 @@ class PackageManager:
         """Get list of available backend IDs"""
         return list(self.backends.keys())
     
+    def get_backends_by_priority(self) -> List[BasePackageController]:
+        """Get backends ordered by priority"""
+        if not self.app_settings:
+            return list(self.backends.values())
+        
+        priority_order = self.app_settings.get_backend_priority()
+        if not priority_order:
+            return list(self.backends.values())
+        
+        ordered = []
+        for backend_id in priority_order:
+            if backend_id in self.backends:
+                ordered.append(self.backends[backend_id])
+        
+        # Add any backends not in priority list
+        for backend in self.backends.values():
+            if backend not in ordered:
+                ordered.append(backend)
+        
+        return ordered
+    
+    def _load_backend_priority(self):
+        """Load backend priority from settings"""
+        priority = self.app_settings.get_backend_priority()
+        if priority and len(priority) > 0:
+            # Use first in priority as default
+            if priority[0] in self.backends:
+                self.default_backend = priority[0]
+    
+    def set_backend_priority(self, priority_order: List[str]):
+        """Set backend priority order"""
+        if self.app_settings:
+            self.app_settings.set_backend_priority(priority_order)
+            if priority_order and len(priority_order) > 0:
+                self.default_backend = priority_order[0]
+    
     def search_packages(self, query, backend: str = None):
-        """Search packages across backends"""
+        """Search packages across backends (respects priority order)"""
         if backend:
             controller = self.get_backend(backend)
             return controller.search_packages(query) if controller else []
         
-        # Search all backends
+        # Search all backends in priority order
         results = []
-        for controller in self.backends.values():
+        for controller in self.get_backends_by_priority():
             if 'search' in controller.get_capabilities():
                 results.extend(controller.search_packages(query))
         

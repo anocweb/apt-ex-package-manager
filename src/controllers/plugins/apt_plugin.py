@@ -473,3 +473,44 @@ class APTPlugin(BasePackageController):
             if self.logger:
                 self.logger.error(f"Error loading APT packages: {e}")
             return []
+    
+    def get_settings_schema(self) -> Dict:
+        """Return settings schema for APT backend"""
+        return {
+            'auto_update_cache': {
+                'type': 'boolean',
+                'label': 'Automatically update package cache',
+                'default': True,
+                'tooltip': 'Automatically refresh package information on startup'
+            },
+            'cache_ttl': {
+                'type': 'integer',
+                'label': 'Cache refresh interval',
+                'default': 24,
+                'min': 1,
+                'max': 168,
+                'suffix': ' hours',
+                'tooltip': 'How often to refresh the package cache'
+            },
+            'show_technical_packages': {
+                'type': 'boolean',
+                'label': 'Show technical packages',
+                'default': False,
+                'tooltip': 'Show libraries and development packages in listings'
+            }
+        }
+    
+    def on_settings_changed(self, setting_key: str, value):
+        """Handle setting changes"""
+        if self.logger:
+            self.logger.info(f"APT setting changed: {setting_key} = {value}")
+        
+        if setting_key == 'auto_update_cache':
+            # Handle auto update cache setting
+            pass
+        elif setting_key == 'cache_ttl':
+            # Handle cache TTL change
+            pass
+        elif setting_key == 'show_technical_packages':
+            # Handle technical packages visibility
+            pass

@@ -11,7 +11,7 @@ from views.panels.home_panel import HomePanel
 from views.panels.installed_panel import InstalledPanel
 from views.panels.updates_panel import UpdatesPanel
 from views.panels.category_panel import CategoryPanel
-from views.panels.settings_panel import SettingsPanel
+from views.panels.settings_panel_new import SettingsPanel
 from views.panels.about_panel import AboutPanel
 from views.panels.category_list_panel import CategoryListPanel
 from views.panels.package_detail_panel import PackageDetailPanel
@@ -101,7 +101,7 @@ class MainView(QMainWindow):
             'category': ('src/ui/panels/category_panel.ui', CategoryPanel),
             'category_list': ('src/ui/panels/category_list_panel.ui', CategoryListPanel),
             'package_detail': ('src/ui/panels/package_detail_panel.ui', PackageDetailPanel),
-            'settings': ('src/ui/panels/settings_panel.ui', SettingsPanel),
+            'settings': ('src/ui/panels/settings_panel_new.ui', SettingsPanel),
             'about': ('src/ui/panels/about_panel.ui', AboutPanel)
         }
         

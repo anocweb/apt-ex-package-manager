@@ -57,6 +57,11 @@ class ApplicationController:
         logging_service = LoggingService(stdout_log_level=self.config.stdout_log_level)
         self.container.register('logging', logging_service)
         
+        # App settings
+        from settings.app_settings import AppSettings
+        app_settings = AppSettings()
+        self.container.register('app_settings', app_settings)
+        
         # LMDB manager
         lmdb_manager = LMDBManager(logging_service=logging_service)
         self.container.register('lmdb', lmdb_manager)
@@ -64,7 +69,7 @@ class ApplicationController:
         # Package manager
         if self.splash:
             self.splash.set_status("Discovering plugins...")
-        package_manager = PackageManager(lmdb_manager, logging_service)
+        package_manager = PackageManager(lmdb_manager, logging_service, app_settings)
         self.container.register('package_manager', package_manager)
     
     def _populate_cache(self) -> None:
