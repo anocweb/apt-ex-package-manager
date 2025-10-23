@@ -2,6 +2,7 @@ from .apt_controller import APTController
 from .base_controller import BasePackageController
 from models.package_model import Package
 from cache import LMDBManager
+from utils.dependency_checker import DependencyChecker
 from typing import Dict, List, Optional
 import os
 import sys
@@ -13,6 +14,7 @@ class PackageManager:
         self.logging_service = logging_service
         self.app_settings = app_settings
         self.backends: Dict[str, BasePackageController] = {}
+        self.plugin_status: Dict[str, Dict] = {}
         self.default_backend = 'apt'
         
         # Maintain backward compatibility
@@ -65,13 +67,33 @@ class PackageManager:
     
     def register_backend(self, controller: BasePackageController):
         """Register a backend plugin"""
-        if controller.is_available():
+        # Check dependencies
+        dep_status = DependencyChecker.check_plugin_dependencies(controller)
+        
+        status_info = {
+            'backend_id': controller.backend_id,
+            'display_name': controller.display_name,
+            'version': controller.version,
+            'available': controller.is_available() and dep_status['all_satisfied'],
+            'plugin': controller if (controller.is_available() and dep_status['all_satisfied']) else None,
+            'capabilities': controller.get_capabilities() if controller.is_available() else set(),
+            'dependencies': {
+                'system': dep_status['system'],
+                'python': dep_status['python']
+            },
+            'missing_dependencies': dep_status['missing']
+        }
+        
+        self.plugin_status[controller.backend_id] = status_info
+        
+        if status_info['available']:
             self.backends[controller.backend_id] = controller
             if self.logging_service:
                 self.logging_service.info(f"Registered backend: {controller.display_name} ({controller.backend_id})")
         else:
             if self.logging_service:
-                self.logging_service.debug(f"Backend not available: {controller.display_name} ({controller.backend_id})")
+                reason = ', '.join(dep_status['missing']) if dep_status['missing'] else 'not available'
+                self.logging_service.debug(f"Backend not available: {controller.display_name} - {reason}")
     
     def get_backend(self, backend: str = None) -> Optional[BasePackageController]:
         """Get backend controller by ID"""
@@ -81,6 +103,18 @@ class PackageManager:
     def get_available_backends(self) -> List[str]:
         """Get list of available backend IDs"""
         return list(self.backends.keys())
+    
+    def get_plugin_status(self) -> Dict[str, Dict]:
+        """Get detailed status of all plugins"""
+        return self.plugin_status
+    
+    def refresh_plugin_status(self):
+        """Re-check all plugin dependencies"""
+        self.backends.clear()
+        self.plugin_status.clear()
+        self._discover_plugins()
+        if self.app_settings:
+            self._load_backend_priority()
     
     def get_backends_by_priority(self) -> List[BasePackageController]:
         """Get backends ordered by priority"""

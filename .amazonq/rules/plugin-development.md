@@ -13,12 +13,14 @@
 - All plugins MUST declare capabilities via `get_capabilities()`
 - All plugins MUST check availability via `is_available()`
 - All plugins MUST map categories to standard sidebar categories
+- All plugins MUST declare dependencies via `get_system_dependencies()` and `get_python_dependencies()`
 - All plugins SHOULD provide settings schema for backend-specific options
 
 ### Required Methods
 ```python
 @property backend_id() -> str          # Unique identifier
 @property display_name() -> str        # UI display name
+@property version() -> str             # Plugin version (default: "1.0.0")
 is_available() -> bool                 # System availability check
 get_capabilities() -> Set[str]         # Supported operations
 search_packages(query) -> List[Package]
@@ -26,6 +28,8 @@ install_package(package_id) -> bool
 remove_package(package_id) -> bool
 get_installed_packages(limit, offset) -> List[Package]
 get_sidebar_category_mapping() -> Dict[str, List[str]]  # Category mapping
+get_system_dependencies() -> List[Dict]  # System dependencies with versions
+get_python_dependencies() -> List[str]   # Python packages with version specs
 ```
 
 ### Optional Methods (with defaults)
@@ -72,8 +76,10 @@ All plugins must map their categories to these:
 
 ### Plugin Registration
 - Plugins auto-discovered from `plugins/` directory
-- PackageManager registers available plugins on init
-- Only plugins with `is_available() == True` are registered
+- PackageManager checks dependencies during registration
+- Only plugins with satisfied dependencies are registered
+- Plugin status tracked in `PackageManager.plugin_status`
+- View plugin status in Plugins panel (🔌 Plugins in sidebar)
 
 ### Backend-Specific Metadata
 - Use `Package.metadata` dict for backend-specific data
@@ -132,10 +138,37 @@ All plugins must map their categories to these:
 3. Add backend selection UI
 4. Handle capability differences
 
+## Dependency Declaration
+
+### System Dependencies
+Declare system binaries/packages with version constraints:
+```python
+def get_system_dependencies(self) -> List[Dict]:
+    return [
+        {
+            'name': 'Flatpak',
+            'command': 'flatpak',
+            'package': 'flatpak',
+            'min_version': '1.12.0',
+            'version_command': ['flatpak', '--version']
+        }
+    ]
+```
+
+### Python Dependencies
+Declare Python packages with pip-style version specs:
+```python
+def get_python_dependencies(self) -> List[str]:
+    return ['PyGObject>=3.40.0', 'requests>=2.25.0,<3.0.0']
+```
+
+### Version Constraints
+Supported operators: `>=`, `>`, `<=`, `<`, `==`, `!=`
+
 ## Documentation Requirements
 - Document plugin capabilities in docstring
 - Document metadata fields used
-- Document system requirements
+- Document system requirements and dependencies
 - Document category mapping logic
 - Document available settings and their effects
 - Provide usage examples

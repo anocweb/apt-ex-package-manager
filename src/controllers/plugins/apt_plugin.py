@@ -19,6 +19,10 @@ class APTPlugin(BasePackageController):
     def display_name(self) -> str:
         return 'APT Packages'
     
+    @property
+    def version(self) -> str:
+        return '1.0.0'
+    
     def is_available(self) -> bool:
         """Check if APT is available on system"""
         try:
@@ -342,6 +346,20 @@ class APTPlugin(BasePackageController):
             if self.logger:
                 self.logger.error(f"Error loading APT sections: {e}")
             return {}
+    
+    def get_system_dependencies(self) -> List[Dict]:
+        return [
+            {
+                'name': 'APT',
+                'command': 'apt-get',
+                'package': 'apt',
+                'min_version': None,
+                'version_command': ['apt-get', '--version']
+            }
+        ]
+    
+    def get_python_dependencies(self) -> List[str]:
+        return ['apt']
     
     def get_upgradable_packages(self) -> List[dict]:
         """Get list of packages with available updates"""

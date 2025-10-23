@@ -12,6 +12,7 @@ from views.panels.installed_panel import InstalledPanel
 from views.panels.updates_panel import UpdatesPanel
 from views.panels.category_panel import CategoryPanel
 from views.panels.settings_panel_new import SettingsPanel
+from views.panels.plugins_panel import PluginsPanel
 from views.panels.about_panel import AboutPanel
 from views.panels.category_list_panel import CategoryListPanel
 from views.panels.package_detail_panel import PackageDetailPanel
@@ -73,6 +74,9 @@ class MainView(QMainWindow):
         self.setup_sidebar()
         self.setup_dev_mode(dev_logging)
         
+        # Update plugin button count
+        self.update_plugins_button()
+        
         # Initial page
         self.select_page('home')
     
@@ -102,6 +106,7 @@ class MainView(QMainWindow):
             'category_list': ('src/ui/panels/category_list_panel.ui', CategoryListPanel),
             'package_detail': ('src/ui/panels/package_detail_panel.ui', PackageDetailPanel),
             'settings': ('src/ui/panels/settings_panel_new.ui', SettingsPanel),
+            'plugins': ('src/ui/panels/plugins_panel.ui', PluginsPanel),
             'about': ('src/ui/panels/about_panel.ui', AboutPanel)
         }
         
@@ -144,6 +149,8 @@ class MainView(QMainWindow):
             panel.remove_requested.connect(self.remove_package)
         elif panel_name == 'settings':
             panel.default_repository_changed.connect(self.on_default_repository_changed)
+        elif panel_name == 'plugins':
+            panel.refresh_requested.connect(self.update_plugins_button)
     
     def setup_sidebar(self):
         """Setup sidebar navigation buttons"""
@@ -152,6 +159,7 @@ class MainView(QMainWindow):
             'installed': self.installedBtn,
             'updates': self.updatesBtn,
             'settings': self.settingsBtn,
+            'plugins': self.pluginsBtn,
             'about': self.aboutBtn,
             'all': self.allAppsBtn,
             'accessibility': self.accessibilityBtn,
@@ -173,6 +181,7 @@ class MainView(QMainWindow):
         self.installedBtn.clicked.connect(lambda: self.select_page('installed'))
         self.updatesBtn.clicked.connect(lambda: self.select_page('updates'))
         self.settingsBtn.clicked.connect(lambda: self.select_page('settings'))
+        self.pluginsBtn.clicked.connect(lambda: self.select_page('plugins'))
         self.aboutBtn.clicked.connect(lambda: self.select_page('about'))
         
         # Connect category buttons
@@ -439,6 +448,16 @@ class MainView(QMainWindow):
             self.updatesBtn.setText(f"⬆️ Updates ({count})")
         else:
             self.updatesBtn.setText("⬆️ Updates")
+    
+    def update_plugins_button(self):
+        """Update the plugins button text with issue count"""
+        plugin_status = self.package_manager.get_plugin_status()
+        issue_count = sum(1 for status in plugin_status.values() if not status['available'])
+        
+        if issue_count > 0:
+            self.pluginsBtn.setText(f"🔌 Plugins ({issue_count})")
+        else:
+            self.pluginsBtn.setText("🔌 Plugins")
     
     def on_default_repository_changed(self, repo_type):
         """Handle default repository change"""

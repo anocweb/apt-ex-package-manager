@@ -16,6 +16,11 @@ class BasePackageController(ABC):
         """Human-readable name for UI (e.g., 'APT Packages')"""
         pass
     
+    @property
+    def version(self) -> str:
+        """Plugin version (e.g., '1.0.0')"""
+        return "1.0.0"
+    
     @abstractmethod
     def is_available(self) -> bool:
         """Check if backend is available on system"""
@@ -89,3 +94,26 @@ class BasePackageController(ABC):
     def on_settings_changed(self, setting_key: str, value):
         """Called when a setting is changed (optional)"""
         pass
+    
+    def get_system_dependencies(self) -> List[Dict]:
+        """Return list of required system dependencies with version constraints
+        
+        Returns:
+            List of dicts with keys: name, command, package, min_version, version_command
+            Example: [{
+                'name': 'Flatpak',
+                'command': 'flatpak',
+                'package': 'flatpak',
+                'min_version': '1.12.0',
+                'version_command': ['flatpak', '--version']
+            }]
+        """
+        return []
+    
+    def get_python_dependencies(self) -> List[str]:
+        """Return list of required Python packages with pip-style version specs
+        
+        Returns:
+            List of package specs like: ['PyGObject>=3.40.0', 'requests>=2.25.0']
+        """
+        return []
