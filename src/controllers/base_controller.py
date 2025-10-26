@@ -84,11 +84,19 @@ class BasePackageController(ABC):
         return False
     
     def get_settings_widget(self, parent=None):
-        """Return QWidget for backend-specific settings (optional)"""
+        """Return QWidget for backend-specific settings (optional)
+        
+        Note: If this method returns a widget, get_settings_schema() will be ignored.
+        Do not implement both - use either custom widget OR schema, not both.
+        """
         return None
     
     def get_settings_schema(self) -> Dict:
-        """Return settings schema for this backend (optional)"""
+        """Return settings schema for this backend (optional)
+        
+        Note: This is ignored if get_settings_widget() returns a widget.
+        Do not implement both - use either custom widget OR schema, not both.
+        """
         return {}
     
     def on_settings_changed(self, setting_key: str, value):

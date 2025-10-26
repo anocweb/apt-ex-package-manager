@@ -8,6 +8,7 @@ class APTPlugin(BasePackageController):
     
     def __init__(self, lmdb_manager=None, logging_service=None):
         self.lmdb_manager = lmdb_manager
+        self.logging_service = logging_service
         self.logger = logging_service.get_logger('apt') if logging_service else None
         self._apt_lock = None
     
@@ -492,31 +493,10 @@ class APTPlugin(BasePackageController):
                 self.logger.error(f"Error loading APT packages: {e}")
             return []
     
-    def get_settings_schema(self) -> Dict:
-        """Return settings schema for APT backend"""
-        return {
-            'auto_update_cache': {
-                'type': 'boolean',
-                'label': 'Automatically update package cache',
-                'default': True,
-                'tooltip': 'Automatically refresh package information on startup'
-            },
-            'cache_ttl': {
-                'type': 'integer',
-                'label': 'Cache refresh interval',
-                'default': 24,
-                'min': 1,
-                'max': 168,
-                'suffix': ' hours',
-                'tooltip': 'How often to refresh the package cache'
-            },
-            'show_technical_packages': {
-                'type': 'boolean',
-                'label': 'Show technical packages',
-                'default': False,
-                'tooltip': 'Show libraries and development packages in listings'
-            }
-        }
+    def get_settings_widget(self, parent=None):
+        """Return QWidget for APT-specific settings"""
+        from widgets.apt_settings_widget import APTSettingsWidget
+        return APTSettingsWidget(parent, self.logging_service if hasattr(self, 'logging_service') else None)
     
     def on_settings_changed(self, setting_key: str, value):
         """Handle setting changes"""

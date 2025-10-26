@@ -12,6 +12,7 @@ class PackageManager:
     def __init__(self, lmdb_manager: LMDBManager, logging_service=None, app_settings=None):
         self.lmdb_manager = lmdb_manager
         self.logging_service = logging_service
+        self.logger = logging_service.get_logger('package_manager') if logging_service else None
         self.app_settings = app_settings
         self.backends: Dict[str, BasePackageController] = {}
         self.plugin_status: Dict[str, Dict] = {}
@@ -67,6 +68,19 @@ class PackageManager:
     
     def register_backend(self, controller: BasePackageController):
         """Register a backend plugin"""
+        # Validate settings implementation
+        has_custom_widget = controller.get_settings_widget() is not None
+        has_schema = bool(controller.get_settings_schema())
+        
+        if has_custom_widget and has_schema:
+            if self.logging_service:
+                logger = self.logging_service.get_logger('package_manager')
+                logger.warning(
+                    f"Plugin '{controller.backend_id}' implements both get_settings_widget() and "
+                    f"get_settings_schema(). Only one should be implemented. "
+                    f"Standard settings schema will be ignored in favor of custom widget."
+                )
+        
         # Check dependencies
         dep_status = DependencyChecker.check_plugin_dependencies(controller)
         
@@ -107,6 +121,26 @@ class PackageManager:
     def get_plugin_status(self) -> Dict[str, Dict]:
         """Get detailed status of all plugins"""
         return self.plugin_status
+    
+    def get_plugin_settings_widget(self, backend_id: str, parent=None):
+        """Get settings widget for a plugin (custom widget takes precedence over schema)"""
+        controller = self.get_backend(backend_id)
+        if not controller:
+            return None
+        
+        # Custom widget takes precedence
+        custom_widget = controller.get_settings_widget(parent)
+        if custom_widget:
+            return custom_widget
+        
+        # Fall back to schema-based widget
+        schema = controller.get_settings_schema()
+        if schema:
+            # Import here to avoid circular dependency
+            from utils.settings_widget_factory import SettingsWidgetFactory
+            return SettingsWidgetFactory.create_from_schema(schema, parent)
+        
+        return None
     
     def refresh_plugin_status(self):
         """Re-check all plugin dependencies"""
