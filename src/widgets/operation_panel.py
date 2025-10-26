@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QTextEdit, QPushButton, QFrame, QStatusBar)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt6.QtGui import QFont, QCursor
+import pyte
 
 class OperationPanel(QWidget):
     """Resizable overlay panel for package operations with collapsible status bar"""
@@ -60,19 +61,25 @@ class OperationPanel(QWidget):
         title_font = QFont()
         title_font.setBold(True)
         self.title_label.setFont(title_font)
+        self.title_label.setWordWrap(True)
         content_layout.addWidget(self.title_label)
         
-        # Command label
-        self.command_label = QLabel()
-        self.command_label.setWordWrap(True)
-        self.command_label.setStyleSheet("color: #888; font-family: monospace;")
-        content_layout.addWidget(self.command_label)
-        
-        # Output text area
+        # Output text area with terminal emulation
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
         self.output_text.setFont(QFont("monospace", 9))
+        self.output_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+            }
+        """)
         content_layout.addWidget(self.output_text)
+        
+        # Terminal emulator (will be initialized with proper size)
+        self.screen = None
+        self.stream = None
+        self._init_terminal()
         
         layout.addWidget(content)
         
@@ -162,7 +169,16 @@ class OperationPanel(QWidget):
         self.animation.setStartValue(QPoint(0, parent_height))
         self.animation.setEndValue(QPoint(0, parent_height - panel_height))
         self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.finished.connect(self._on_expand_finished)
         self.animation.start()
+    
+    def _on_expand_finished(self):
+        """Handle expansion animation finished"""
+        # Recalculate terminal width now that panel is fully visible
+        if self.screen:
+            new_cols = self._calculate_terminal_width()
+            if new_cols != self.screen.columns:
+                self.screen.resize(lines=self.screen.lines, columns=new_cols)
     
     def collapse_panel(self):
         """Collapse the panel with animation"""
@@ -195,15 +211,58 @@ class OperationPanel(QWidget):
             # Update shade size
             self.shade.setGeometry(0, 0, self.parent().width(), parent_height)
     
+    def _init_terminal(self):
+        """Initialize terminal with calculated dimensions"""
+        cols = self._calculate_terminal_width()
+        rows = 100  # Large enough for scrolling
+        self.screen = pyte.Screen(cols, rows)
+        self.stream = pyte.Stream(self.screen)
+    
+    def _calculate_terminal_width(self):
+        """Calculate terminal width based on widget width"""
+        if not self.output_text or not self.output_text.isVisible():
+            return 120
+        
+        # Get font metrics
+        font_metrics = self.output_text.fontMetrics()
+        char_width = font_metrics.horizontalAdvance('M')  # Use 'M' for monospace width
+        
+        if char_width <= 0:
+            return 120
+        
+        # Get available width (account for scrollbar ~20px and small margin)
+        available_width = self.output_text.viewport().width() - 25
+        
+        if available_width <= 0:
+            return 120
+        
+        # Calculate columns
+        cols = max(80, available_width // char_width)
+        return cols
+    
+    def resizeEvent(self, event):
+        """Handle resize to update terminal width"""
+        super().resizeEvent(event)
+        if self.screen:
+            new_cols = self._calculate_terminal_width()
+            if new_cols != self.screen.columns:
+                # Resize terminal
+                self.screen.resize(lines=self.screen.lines, columns=new_cols)
+    
     def set_operation(self, operation_type: str, package_name: str, command: str):
         """Set the current operation details"""
-        self.title_label.setText(f"{operation_type} {package_name}")
-        self.command_label.setText(f"Command: {command}")
+        if command:
+            self.title_label.setText(f"Operations Console: {command}")
+        else:
+            self.title_label.setText("Operations Console")
         self.output_text.clear()
+        # Reinitialize terminal with current width
+        self._init_terminal()
     
     def append_output(self, text: str):
-        """Append text to output area"""
-        self.output_text.append(text.rstrip())
+        """Update output area with terminal content"""
+        # Update display with full terminal content
+        self.output_text.setPlainText(text)
         self.output_text.verticalScrollBar().setValue(
             self.output_text.verticalScrollBar().maximum()
         )

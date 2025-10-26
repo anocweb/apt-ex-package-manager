@@ -315,13 +315,13 @@ class MainView(QMainWindow):
         """Install a package"""
         self.logger.info(f"User requested install: {package_name}")
         
-        from workers.package_operation_worker import PackageOperationWorker
         backend_obj = self.package_manager.get_backend(backend)
         
         if not backend_obj:
             self.status_service.show_message(f"Backend {backend} not available", 3000)
             return
         
+        from workers.package_operation_worker import PackageOperationWorker
         self.operation_worker = PackageOperationWorker(backend_obj, 'install', package_name, self.logging_service)
         self.operation_worker.command_started.connect(self.on_command_started)
         self.operation_worker.output_line.connect(self.on_output_line)
@@ -346,7 +346,6 @@ class MainView(QMainWindow):
     
     def on_install_finished(self, success, package_name):
         """Handle install completion"""
-        self.operation_panel.set_complete(success)
         message = f"Successfully installed {package_name}" if success else f"Failed to install {package_name}"
         self.status_service.set_operation_complete(success, message)
         
@@ -357,13 +356,13 @@ class MainView(QMainWindow):
         """Remove a package"""
         self.logger.info(f"User requested removal: {package_name}")
         
-        from workers.package_operation_worker import PackageOperationWorker
         backend_obj = self.package_manager.get_backend(backend)
         
         if not backend_obj:
             self.status_service.show_message(f"Backend {backend} not available", 3000)
             return
         
+        from workers.package_operation_worker import PackageOperationWorker
         self.operation_worker = PackageOperationWorker(backend_obj, 'remove', package_name, self.logging_service)
         self.operation_worker.command_started.connect(self.on_command_started)
         self.operation_worker.output_line.connect(self.on_output_line)
@@ -377,7 +376,6 @@ class MainView(QMainWindow):
     
     def on_remove_finished(self, success, package_name):
         """Handle remove completion"""
-        self.operation_panel.set_complete(success)
         message = f"Successfully removed {package_name}" if success else f"Failed to remove {package_name}"
         self.status_service.set_operation_complete(success, message)
         
@@ -387,7 +385,6 @@ class MainView(QMainWindow):
     def on_operation_error(self, error_message):
         """Handle operation error"""
         self.operation_panel.append_output(f"\nError: {error_message}")
-        self.operation_panel.set_complete(False)
         self.status_service.set_operation_complete(False, error_message)
     
     def refresh_current_panel(self):
@@ -419,13 +416,13 @@ class MainView(QMainWindow):
         """Update a package"""
         self.logger.info(f"User requested update: {package_name}")
         
-        from workers.package_operation_worker import PackageOperationWorker
         backend_obj = self.package_manager.get_backend('apt')
         
         if not backend_obj:
             self.status_service.show_message("APT backend not available", 3000)
             return
         
+        from workers.package_operation_worker import PackageOperationWorker
         self.operation_worker = PackageOperationWorker(backend_obj, 'update', package_name, self.logging_service)
         self.operation_worker.command_started.connect(self.on_command_started)
         self.operation_worker.output_line.connect(self.on_output_line)
@@ -439,7 +436,6 @@ class MainView(QMainWindow):
     
     def on_update_finished(self, success, package_name):
         """Handle update completion"""
-        self.operation_panel.set_complete(success)
         message = f"Successfully updated {package_name}" if success else f"Failed to update {package_name}"
         self.status_service.set_operation_complete(success, message)
         
@@ -453,13 +449,13 @@ class MainView(QMainWindow):
         """Update all packages"""
         self.logger.info("Starting system-wide package update")
         
-        from workers.package_operation_worker import PackageOperationWorker
         backend_obj = self.package_manager.get_backend('apt')
         
         if not backend_obj:
             self.status_service.show_message("APT backend not available", 3000)
             return
         
+        from workers.package_operation_worker import PackageOperationWorker
         self.operation_worker = PackageOperationWorker(backend_obj, 'update_all', 'all packages', self.logging_service)
         self.operation_worker.command_started.connect(self.on_command_started)
         self.operation_worker.output_line.connect(self.on_output_line)
@@ -473,7 +469,6 @@ class MainView(QMainWindow):
     
     def on_update_all_finished(self, success, _):
         """Handle update all completion"""
-        self.operation_panel.set_complete(success)
         message = "Successfully updated all packages" if success else "Failed to update packages"
         self.status_service.set_operation_complete(success, message)
         
