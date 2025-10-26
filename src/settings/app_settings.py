@@ -20,7 +20,8 @@ class AppSettings:
             'ui_theme': 'system',
             'file_logging_enabled': False,
             'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs'),
-            'odrs_enabled': True
+            'odrs_enabled': True,
+            'operation_panel_height': 300
         }
         
         for key, value in defaults.items():
@@ -140,3 +141,11 @@ class AppSettings:
     def set_backend_setting(self, backend_id: str, key: str, value):
         """Set backend-specific setting"""
         self.set_plugin_setting(backend_id, key, value)
+    
+    def get_operation_panel_height(self) -> int:
+        """Get operation panel height"""
+        return int(self.get('operation_panel_height', 300))
+    
+    def set_operation_panel_height(self, height: int):
+        """Set operation panel height"""
+        self.set('operation_panel_height', height)

@@ -47,6 +47,7 @@ class MainView(QMainWindow):
         self.logging_service.get_logger('odrs')
         self.logging_service.get_logger('rating_cache')
         self.logging_service.get_logger('db.connection')
+        self.logging_service.get_logger('operations')
         
         if dev_logging:
             import logging
@@ -65,8 +66,11 @@ class MainView(QMainWindow):
         # Setup window icon
         self.setup_window_icon()
         
+        # Setup operation status UI
+        self.setup_operation_status_ui()
+        
         # Setup status service
-        self.status_service = StatusService(self.statusbar)
+        self.status_service = StatusService(self.operation_status_bar)
         
         # Setup UI
         self.setup_status_bar_log_icon()
@@ -76,6 +80,9 @@ class MainView(QMainWindow):
         
         # Update plugin button count
         self.update_plugins_button()
+        
+        # Check for updates on startup
+        self.check_updates_on_startup()
         
         # Initial page
         self.select_page('home')
@@ -315,21 +322,36 @@ class MainView(QMainWindow):
             self.status_service.show_message(f"Backend {backend} not available", 3000)
             return
         
-        self.operation_worker = PackageOperationWorker(backend_obj, 'install', package_name)
+        self.operation_worker = PackageOperationWorker(backend_obj, 'install', package_name, self.logging_service)
+        self.operation_worker.command_started.connect(self.on_command_started)
+        self.operation_worker.output_line.connect(self.on_output_line)
         self.operation_worker.finished.connect(self.on_install_finished)
         self.operation_worker.error.connect(self.on_operation_error)
-        self.operation_worker.start()
         
-        self.status_service.start_animation(f"Installing {package_name}")
+        self.status_service.start_operation("Installing", package_name)
+        self.operation_panel.set_operation("Installing", package_name, "")
+        
+        self.operation_worker.start()
+    
+    def on_command_started(self, command: str):
+        """Handle command started"""
+        if hasattr(self, 'operation_worker'):
+            operation = self.operation_worker.operation.capitalize()
+            package = self.operation_worker.package_name
+            self.operation_panel.set_operation(operation, package, command)
+    
+    def on_output_line(self, line: str):
+        """Handle output line from operation"""
+        self.operation_panel.append_output(line)
     
     def on_install_finished(self, success, package_name):
         """Handle install completion"""
-        self.status_service.stop_animation()
+        self.operation_panel.set_complete(success)
+        message = f"Successfully installed {package_name}" if success else f"Failed to install {package_name}"
+        self.status_service.set_operation_complete(success, message)
+        
         if success:
-            self.status_service.show_message(f"Successfully installed {package_name}", 3000)
             self.refresh_current_panel()
-        else:
-            self.status_service.show_message(f"Failed to install {package_name}", 3000)
     
     def remove_package(self, package_name, backend='apt'):
         """Remove a package"""
@@ -342,26 +364,31 @@ class MainView(QMainWindow):
             self.status_service.show_message(f"Backend {backend} not available", 3000)
             return
         
-        self.operation_worker = PackageOperationWorker(backend_obj, 'remove', package_name)
+        self.operation_worker = PackageOperationWorker(backend_obj, 'remove', package_name, self.logging_service)
+        self.operation_worker.command_started.connect(self.on_command_started)
+        self.operation_worker.output_line.connect(self.on_output_line)
         self.operation_worker.finished.connect(self.on_remove_finished)
         self.operation_worker.error.connect(self.on_operation_error)
-        self.operation_worker.start()
         
-        self.status_service.start_animation(f"Removing {package_name}")
+        self.status_service.start_operation("Removing", package_name)
+        self.operation_panel.set_operation("Removing", package_name, "")
+        
+        self.operation_worker.start()
     
     def on_remove_finished(self, success, package_name):
         """Handle remove completion"""
-        self.status_service.stop_animation()
+        self.operation_panel.set_complete(success)
+        message = f"Successfully removed {package_name}" if success else f"Failed to remove {package_name}"
+        self.status_service.set_operation_complete(success, message)
+        
         if success:
-            self.status_service.show_message(f"Successfully removed {package_name}", 3000)
             self.refresh_current_panel()
-        else:
-            self.status_service.show_message(f"Failed to remove {package_name}", 3000)
     
     def on_operation_error(self, error_message):
         """Handle operation error"""
-        self.status_service.stop_animation()
-        self.status_service.show_message(f"Error: {error_message}", 5000)
+        self.operation_panel.append_output(f"\nError: {error_message}")
+        self.operation_panel.set_complete(False)
+        self.status_service.set_operation_complete(False, error_message)
     
     def refresh_current_panel(self):
         """Refresh current panel without losing scroll position"""
@@ -399,21 +426,28 @@ class MainView(QMainWindow):
             self.status_service.show_message("APT backend not available", 3000)
             return
         
-        self.operation_worker = PackageOperationWorker(backend_obj, 'update', package_name)
+        self.operation_worker = PackageOperationWorker(backend_obj, 'update', package_name, self.logging_service)
+        self.operation_worker.command_started.connect(self.on_command_started)
+        self.operation_worker.output_line.connect(self.on_output_line)
         self.operation_worker.finished.connect(self.on_update_finished)
         self.operation_worker.error.connect(self.on_operation_error)
-        self.operation_worker.start()
         
-        self.status_service.start_animation(f"Updating {package_name}")
+        self.status_service.start_operation("Updating", package_name)
+        self.operation_panel.set_operation("Updating", package_name, "")
+        
+        self.operation_worker.start()
     
     def on_update_finished(self, success, package_name):
         """Handle update completion"""
-        self.status_service.stop_animation()
+        self.operation_panel.set_complete(success)
+        message = f"Successfully updated {package_name}" if success else f"Failed to update {package_name}"
+        self.status_service.set_operation_complete(success, message)
+        
         if success:
-            self.status_service.show_message(f"Successfully updated {package_name}", 3000)
             self.refresh_current_panel()
-        else:
-            self.status_service.show_message(f"Failed to update {package_name}", 3000)
+            # Refresh updates panel if it exists
+            if 'updates' in self.panels:
+                self.panels['updates'].load_updates()
     
     def update_all_packages(self):
         """Update all packages"""
@@ -426,21 +460,28 @@ class MainView(QMainWindow):
             self.status_service.show_message("APT backend not available", 3000)
             return
         
-        self.operation_worker = PackageOperationWorker(backend_obj, 'update_all', None)
+        self.operation_worker = PackageOperationWorker(backend_obj, 'update_all', 'all packages', self.logging_service)
+        self.operation_worker.command_started.connect(self.on_command_started)
+        self.operation_worker.output_line.connect(self.on_output_line)
         self.operation_worker.finished.connect(self.on_update_all_finished)
         self.operation_worker.error.connect(self.on_operation_error)
-        self.operation_worker.start()
         
-        self.status_service.start_animation("Updating all packages")
+        self.status_service.start_operation("Updating", "all packages")
+        self.operation_panel.set_operation("Updating", "all packages", "")
+        
+        self.operation_worker.start()
     
     def on_update_all_finished(self, success, _):
         """Handle update all completion"""
-        self.status_service.stop_animation()
+        self.operation_panel.set_complete(success)
+        message = "Successfully updated all packages" if success else "Failed to update packages"
+        self.status_service.set_operation_complete(success, message)
+        
         if success:
-            self.status_service.show_message("Successfully updated all packages", 3000)
             self.refresh_current_panel()
-        else:
-            self.status_service.show_message("Failed to update packages", 3000)
+            # Refresh updates panel if it exists
+            if 'updates' in self.panels:
+                self.panels['updates'].load_updates()
     
     def update_updates_button(self, count):
         """Update the updates button text with count"""
@@ -458,6 +499,22 @@ class MainView(QMainWindow):
             self.pluginsBtn.setText(f"🔌 Plugins ({issue_count})")
         else:
             self.pluginsBtn.setText("🔌 Plugins")
+    
+    def check_updates_on_startup(self):
+        """Check for updates in background on startup"""
+        from workers.update_check_worker import UpdateCheckWorker
+        
+        apt_backend = self.package_manager.get_backend('apt')
+        if not apt_backend:
+            return
+        
+        self.startup_update_worker = UpdateCheckWorker(apt_backend)
+        self.startup_update_worker.finished_signal.connect(self.on_startup_updates_checked)
+        self.startup_update_worker.start()
+    
+    def on_startup_updates_checked(self, updates):
+        """Handle startup update check completion"""
+        self.update_updates_button(len(updates))
     
     def on_default_repository_changed(self, repo_type):
         """Handle default repository change"""
@@ -505,6 +562,39 @@ class MainView(QMainWindow):
         self.logger.error(f"Cache update failed: {error_message}")
         self.status_service.show_message(f"Failed to update cache: {error_message}", 5000)
     
+    def setup_operation_status_ui(self):
+        """Setup operation status UI components"""
+        from widgets.operation_panel import OperationPanel, OperationStatusBar
+        
+        # Create operation status bar
+        self.operation_status_bar = OperationStatusBar(self)
+        self.operation_status_bar.expand_requested.connect(self.on_expand_operation_panel)
+        self.operation_status_bar.collapse_requested.connect(self.on_collapse_operation_panel)
+        self.setStatusBar(self.operation_status_bar)
+        
+        # Create operation panel (overlay)
+        self.operation_panel = OperationPanel(self.centralWidget(), self.app_settings)
+        self.operation_panel.collapsed.connect(self.on_operation_panel_collapsed)
+    
+    def on_expand_operation_panel(self):
+        """Handle expand operation panel request"""
+        self.operation_panel.expand_panel()
+        self.operation_status_bar.set_expanded(True)
+    
+    def on_collapse_operation_panel(self):
+        """Handle collapse operation panel request"""
+        self.operation_panel.collapse_panel()
+    
+    def on_operation_panel_collapsed(self):
+        """Handle operation panel collapsed"""
+        self.operation_status_bar.set_expanded(False)
+    
+    def resizeEvent(self, event):
+        """Handle window resize"""
+        super().resizeEvent(event)
+        if hasattr(self, 'operation_panel') and self.operation_panel.is_expanded:
+            self.operation_panel.update_position()
+    
     def setup_status_bar_log_icon(self):
         """Add log icon to status bar"""
         from PyQt6.QtWidgets import QLabel
@@ -512,7 +602,7 @@ class MainView(QMainWindow):
         # DB stats label
         self.db_stats_label = QLabel()
         self.db_stats_label.setStyleSheet("padding: 0 10px; font-size: 11px;")
-        self.statusbar.addPermanentWidget(self.db_stats_label)
+        self.operation_status_bar.add_permanent_widget(self.db_stats_label)
         
         # Update stats periodically
         self.stats_timer = QTimer()
@@ -522,13 +612,13 @@ class MainView(QMainWindow):
         
         # Log button
         self.log_button = QPushButton("📋")
-        self.log_button.setFixedSize(QSize(30, 20))
+        self.log_button.setFixedSize(QSize(24, 24))
         self.log_button.setToolTip("View application logs")
         self.log_button.setStyleSheet("""
             QPushButton {
                 border: none;
                 background: transparent;
-                font-size: 14px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background-color: palette(highlight);
@@ -536,7 +626,7 @@ class MainView(QMainWindow):
             }
         """)
         self.log_button.clicked.connect(self.show_log_view)
-        self.statusbar.addPermanentWidget(self.log_button)
+        self.operation_status_bar.add_permanent_widget(self.log_button)
     
     def update_db_stats(self):
         """Update database stats"""

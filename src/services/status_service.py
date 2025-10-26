@@ -13,7 +13,10 @@ class StatusService:
     
     def show_message(self, message, timeout=0):
         """Show a status message with optional timeout (milliseconds)"""
-        self.statusbar.showMessage(message, timeout)
+        if hasattr(self.statusbar, 'show_message'):
+            self.statusbar.show_message(message, timeout)
+        else:
+            self.statusbar.showMessage(message, timeout)
     
     def clear_message(self):
         """Clear the status message"""
@@ -45,5 +48,19 @@ class StatusService:
     def _animate_dots(self):
         """Animate the dots in status message"""
         dots = "." * (self.status_dots + 1)
-        self.statusbar.showMessage(f"{self.status_base_message}{dots}")
+        message = f"{self.status_base_message}{dots}"
+        if hasattr(self.statusbar, 'show_message'):
+            self.statusbar.show_message(message)
+        else:
+            self.statusbar.showMessage(message)
         self.status_dots = (self.status_dots + 1) % 3
+    
+    def start_operation(self, operation_type, package_name):
+        """Start showing operation in status bar"""
+        if hasattr(self.statusbar, 'start_operation'):
+            self.statusbar.start_operation(operation_type, package_name)
+    
+    def set_operation_complete(self, success, message):
+        """Mark operation as complete"""
+        if hasattr(self.statusbar, 'set_complete'):
+            self.statusbar.set_complete(success, message)
