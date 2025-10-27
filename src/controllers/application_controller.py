@@ -246,6 +246,10 @@ class ApplicationController:
                 self.splash.finish(self.main_view)
                 self.splash = None
             self.main_view.show()
+            
+            # Navigate to updates page if requested
+            if self.config.show_updates:
+                self.main_view.select_page('updates')
     
     def cleanup(self) -> None:
         """Clean up resources on application exit"""

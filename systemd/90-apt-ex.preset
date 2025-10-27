@@ -1,0 +1,2 @@
+# Enable Apt-Ex update checker by default for all users
+enable apt-ex-update-checker.service

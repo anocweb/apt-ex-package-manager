@@ -21,7 +21,11 @@ class AppSettings:
             'file_logging_enabled': False,
             'log_directory': os.path.join(os.path.expanduser('~'), '.local', 'share', 'apt-ex-package-manager', 'logs'),
             'odrs_enabled': True,
-            'operation_panel_height': 300
+            'operation_panel_height': 300,
+            'update_check_enabled': True,
+            'update_check_interval': 240,
+            'last_update_check': '',
+            'show_tray_icon': True
         }
         
         for key, value in defaults.items():
@@ -149,3 +153,37 @@ class AppSettings:
     def set_operation_panel_height(self, height: int):
         """Set operation panel height"""
         self.set('operation_panel_height', height)
+    
+    def get_update_check_enabled(self) -> bool:
+        """Get update check enabled preference"""
+        value = self.get('update_check_enabled', True)
+        return value if isinstance(value, bool) else str(value).lower() == 'true'
+    
+    def set_update_check_enabled(self, enabled: bool):
+        """Set update check enabled preference"""
+        self.set('update_check_enabled', enabled)
+    
+    def get_update_check_interval(self) -> int:
+        """Get update check interval in minutes"""
+        return int(self.get('update_check_interval', 240))
+    
+    def set_update_check_interval(self, minutes: int):
+        """Set update check interval in minutes"""
+        self.set('update_check_interval', minutes)
+    
+    def get_last_update_check(self) -> str:
+        """Get last update check timestamp"""
+        return self.get('last_update_check', '')
+    
+    def set_last_update_check(self, timestamp: str):
+        """Set last update check timestamp"""
+        self.set('last_update_check', timestamp)
+    
+    def get_show_tray_icon(self) -> bool:
+        """Get show tray icon preference"""
+        value = self.get('show_tray_icon', True)
+        return value if isinstance(value, bool) else str(value).lower() == 'true'
+    
+    def set_show_tray_icon(self, show: bool):
+        """Set show tray icon preference"""
+        self.set('show_tray_icon', show)

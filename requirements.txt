@@ -3,6 +3,7 @@ PyQt6>=6.0.0
 lmdb>=1.0.0
 requests>=2.0.0
 pyte>=0.8.0
+dbus-python>=1.2.0
 
 # Optional backend dependencies
 # Note: python-apt must be installed system-wide via:

@@ -25,6 +25,9 @@ class SettingsPanel(BasePanel):
         # Load backends and their settings
         self.current_sort = 'priority'
         self.load_backend_sections()
+        
+        # Setup daemon controls
+        self.setup_daemon_controls()
     
     def connect_signals(self):
         """Connect signals"""
@@ -261,3 +264,176 @@ class SettingsPanel(BasePanel):
         """Set ODRS enabled setting"""
         self.app_settings.set_odrs_enabled(enabled)
         self.logger.info(f"ODRS {'enabled' if enabled else 'disabled'}")
+    
+    def setup_daemon_controls(self):
+        """Setup update daemon controls"""
+        from PyQt6.QtWidgets import QCheckBox, QComboBox, QSpacerItem, QSizePolicy
+        from utils.daemon_manager import DaemonManager
+        
+        # Create daemon section
+        daemon_group = QGroupBox("Update Notifications")
+        daemon_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 13px; }")
+        daemon_layout = QVBoxLayout(daemon_group)
+        
+        # Enable checkbox
+        self.daemon_enabled_checkbox = QCheckBox("Enable automatic update checks")
+        self.daemon_enabled_checkbox.setChecked(self.app_settings.get_update_check_enabled())
+        self.daemon_enabled_checkbox.toggled.connect(self.on_daemon_enabled_changed)
+        daemon_layout.addWidget(self.daemon_enabled_checkbox)
+        
+        # Interval selector
+        interval_container = QWidget()
+        interval_layout = QHBoxLayout(interval_container)
+        interval_layout.setContentsMargins(20, 0, 0, 0)
+        interval_layout.addWidget(QLabel("Check interval:"))
+        
+        self.interval_combo = QComboBox()
+        self.interval_combo.addItem("Every 30 minutes", 30)
+        self.interval_combo.addItem("Every hour", 60)
+        self.interval_combo.addItem("Every 2 hours", 120)
+        self.interval_combo.addItem("Every 4 hours", 240)
+        self.interval_combo.addItem("Every 12 hours", 720)
+        self.interval_combo.addItem("Every 24 hours", 1440)
+        self.interval_combo.addItem("Weekly", 10080)
+        self.interval_combo.addItem("Biweekly", 20160)
+        self.interval_combo.addItem("Monthly", 43200)
+        self.interval_combo.addItem("Never", 0)
+        
+        current_interval = self.app_settings.get_update_check_interval()
+        index = self.interval_combo.findData(current_interval)
+        if index >= 0:
+            self.interval_combo.setCurrentIndex(index)
+        
+        self.interval_combo.currentIndexChanged.connect(self.on_interval_changed)
+        interval_layout.addWidget(self.interval_combo)
+        interval_layout.addStretch()
+        daemon_layout.addWidget(interval_container)
+        
+        # Daemon status
+        status_container = QWidget()
+        status_layout = QVBoxLayout(status_container)
+        status_layout.setContentsMargins(0, 10, 0, 0)
+        
+        self.daemon_status_label = QLabel()
+        self.daemon_status_label.setStyleSheet("font-weight: normal; font-size: 11px;")
+        status_layout.addWidget(self.daemon_status_label)
+        
+        self.daemon_last_check_label = QLabel()
+        self.daemon_last_check_label.setStyleSheet("font-weight: normal; font-size: 11px; color: gray;")
+        status_layout.addWidget(self.daemon_last_check_label)
+        
+        daemon_layout.addWidget(status_container)
+        
+        # Control buttons
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 5, 0, 0)
+        
+        self.check_now_btn = QPushButton("Check Now")
+        self.check_now_btn.clicked.connect(self.on_check_now)
+        button_layout.addWidget(self.check_now_btn)
+        
+        button_layout.addStretch()
+        daemon_layout.addWidget(button_container)
+        
+        # Add to main layout (insert after ODRS section if it exists)
+        main_layout = self.layout()
+        if main_layout:
+            # Find a good position to insert
+            insert_index = 0
+            for i in range(main_layout.count()):
+                widget = main_layout.itemAt(i).widget()
+                if widget and isinstance(widget, QGroupBox):
+                    insert_index = i + 1
+                    break
+            main_layout.insertWidget(insert_index, daemon_group)
+        
+        # Update daemon status
+        self.update_daemon_status()
+        
+        # Setup timer to update status periodically
+        from PyQt6.QtCore import QTimer
+        self.daemon_status_timer = QTimer()
+        self.daemon_status_timer.timeout.connect(self.update_daemon_status)
+        self.daemon_status_timer.start(5000)  # Update every 5 seconds
+    
+    def update_daemon_status(self):
+        """Update daemon status display"""
+        from utils.daemon_manager import DaemonManager
+        from services.update_daemon_client import UpdateDaemonClient
+        from datetime import datetime
+        
+        status = DaemonManager.get_status()
+        
+        # Check if daemon is actually running via D-Bus (more reliable)
+        client = UpdateDaemonClient(self.logging_service)
+        is_running = client.is_available()
+        
+        # Status label
+        if is_running:
+            self.daemon_status_label.setText("Daemon Status: ● Running")
+            self.daemon_status_label.setStyleSheet("font-weight: normal; font-size: 11px; color: green;")
+        else:
+            self.daemon_status_label.setText("Daemon Status: ○ Stopped")
+            self.daemon_status_label.setStyleSheet("font-weight: normal; font-size: 11px; color: red;")
+        
+        # Last check label
+        last_check = self.app_settings.get_last_update_check()
+        if last_check:
+            try:
+                check_time = datetime.fromisoformat(last_check)
+                time_diff = datetime.now() - check_time
+                if time_diff.total_seconds() < 60:
+                    time_str = "just now"
+                elif time_diff.total_seconds() < 3600:
+                    minutes = int(time_diff.total_seconds() / 60)
+                    time_str = f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+                elif time_diff.total_seconds() < 86400:
+                    hours = int(time_diff.total_seconds() / 3600)
+                    time_str = f"{hours} hour{'s' if hours != 1 else ''} ago"
+                else:
+                    days = int(time_diff.total_seconds() / 86400)
+                    time_str = f"{days} day{'s' if days != 1 else ''} ago"
+                self.daemon_last_check_label.setText(f"Last check: {time_str}")
+            except:
+                self.daemon_last_check_label.setText("Last check: Unknown")
+        else:
+            self.daemon_last_check_label.setText("Last check: Never")
+        
+        # Update button states
+        self.check_now_btn.setEnabled(is_running)
+    
+    def on_daemon_enabled_changed(self, enabled):
+        """Handle daemon enabled checkbox change"""
+        self.app_settings.set_update_check_enabled(enabled)
+        self.logger.info(f"Update checks {'enabled' if enabled else 'disabled'}")
+    
+    def on_interval_changed(self, index):
+        """Handle interval change"""
+        minutes = self.interval_combo.itemData(index)
+        self.app_settings.set_update_check_interval(minutes)
+        self.logger.info(f"Update check interval set to {minutes} minutes")
+        
+        # Update daemon if running
+        try:
+            from services.update_daemon_client import UpdateDaemonClient
+            client = UpdateDaemonClient(self.logging_service)
+            if client.is_available():
+                client.set_check_interval(minutes)
+        except:
+            pass
+    
+    def on_check_now(self):
+        """Trigger immediate update check"""
+        try:
+            from services.update_daemon_client import UpdateDaemonClient
+            client = UpdateDaemonClient(self.logging_service)
+            if client.is_available():
+                client.check_now()
+                self.logger.info("Triggered update check")
+            else:
+                self.logger.warning("Daemon not available")
+        except Exception as e:
+            self.logger.error(f"Failed to trigger check: {e}")
+    
+

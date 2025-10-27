@@ -1,0 +1,12 @@
+[Unit]
+Description=Apt-Ex Package Manager Update Checker
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/share/apt-ex-package-manager/update_daemon.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

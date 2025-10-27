@@ -36,5 +36,15 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         }
+        ,
+        {
+            "name": "Update Daemon",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/update_daemon.py",
+            "args": [""],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        }
     ]
 }

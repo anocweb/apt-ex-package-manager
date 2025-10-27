@@ -233,3 +233,20 @@ class PackageManager:
         if not results:
             return self.apt_controller.get_installed_packages()
         return results
+    
+    def get_upgradable_packages(self, backend: str = None) -> List[Dict]:
+        """Get packages with available updates"""
+        if backend:
+            controller = self.get_backend(backend)
+            return controller.get_upgradable_packages() if controller else []
+        
+        # Get from all backends
+        results = []
+        for controller in self.backends.values():
+            if 'list_updates' in controller.get_capabilities():
+                results.extend(controller.get_upgradable_packages())
+        
+        # Fallback to old controller if no plugins
+        if not results and hasattr(self.apt_controller, 'get_upgradable_packages'):
+            return self.apt_controller.get_upgradable_packages()
+        return results
