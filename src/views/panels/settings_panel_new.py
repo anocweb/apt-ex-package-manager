@@ -88,7 +88,11 @@ class SettingsPanel(BasePanel):
                 backend = self.package_manager.get_backend(backend_id)
                 if backend:
                     enabled = backend_id in enabled_backends
-                    widget = BackendPreferenceItem(backend_id, backend.display_name, enabled)
+                    
+                    # Get plugin status
+                    status = self.package_manager.plugin_status.get(backend_id, {})
+                    
+                    widget = BackendPreferenceItem(backend_id, backend.display_name, enabled, status)
                     widget.enabled_changed.connect(self.on_backend_enabled_changed)
                     
                     item = QListWidgetItem()
