@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1000</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>750</width>
+    <height>550</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Apt-Ex Package Manager</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QWidget" name="sidebar" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>220</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>220</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="styleSheet">
+       <string>QWidget#sidebar { background-color: #2d3142; }
+QPushButton { 
+  text-align: left; 
+  padding: 8px 16px; 
+  border: none; 
+  color: white;
+  font-size: 14px;
+}
+QPushButton:hover { background-color: #3e4a61; }
+QPushButton:pressed { background-color: #1e2328; }
+QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</string>
+      </property>
+      <layout class="QVBoxLayout" name="sidebarWrapperLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QScrollArea" name="sidebarScrollArea">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="verticalScrollBarPolicy">
+          <enum>Qt::ScrollBarAsNeeded</enum>
+         </property>
+         <property name="styleSheet">
+          <string>QScrollArea { border: none; background-color: transparent; }</string>
+         </property>
+         <widget class="QWidget" name="sidebarContent">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>220</width>
+            <height>400</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="sidebarLayout">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>8</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+       <item>
+        <widget class="QPushButton" name="homeBtn">
+         <property name="text">
+          <string>🏠 Home</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="installedBtn">
+         <property name="text">
+          <string>📦 Installed</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="updatesBtn">
+         <property name="text">
+          <string>⬆️ Updates</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="settingsBtn">
+         <property name="text">
+          <string>⚙️ Settings</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pluginsBtn">
+         <property name="text">
+          <string>🔌 Plugins</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="aboutBtn">
+         <property name="text">
+          <string>ℹ️ About</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="separator1">
+         <property name="frameShape">
+          <enum>QFrame::HLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+         <property name="styleSheet">
+          <string>background-color: #555; margin: 8px 16px; min-height: 1px;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="allAppsBtn">
+         <property name="text">
+          <string>📱 All Applications</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="accessibilityBtn">
+         <property name="text">
+          <string>♿ Accessibility</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="developmentBtn">
+         <property name="text">
+          <string>🔧 Development</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="educationBtn">
+         <property name="text">
+          <string>🎓 Education</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="gamesBtn">
+         <property name="text">
+          <string>🎮 Games</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="graphicsBtn">
+         <property name="text">
+          <string>🎨 Graphics</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="internetBtn">
+         <property name="text">
+          <string>🌐 Internet</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="multimediaBtn">
+         <property name="text">
+          <string>🎵 Multimedia</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="officeBtn">
+         <property name="text">
+          <string>📄 Office</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="scienceBtn">
+         <property name="text">
+          <string>🧪 Science &amp; Math</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="systemBtn">
+         <property name="text">
+          <string>⚙️ System</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="utilitiesBtn">
+         <property name="text">
+          <string>🔨 Utilities</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="viewCategoriesBtn">
+         <property name="text">
+          <string>📂 View Categories</string>
+         </property>
+        </widget>
+       </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="contentArea" native="true">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QWidget" name="headerWidget" native="true">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>65</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string></string>
+         </property>
+         <layout class="QHBoxLayout" name="headerLayout">
+          <property name="leftMargin">
+           <number>15</number>
+          </property>
+          <property name="topMargin">
+           <number>15</number>
+          </property>
+          <property name="rightMargin">
+           <number>15</number>
+          </property>
+          <property name="bottomMargin">
+           <number>15</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="pageTitle">
+            <property name="text">
+             <string>Welcome to Apt-Ex Package Manager</string>
+            </property>
+            <property name="styleSheet">
+             <string>font-size: 24px; font-weight: bold;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="headerSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QWidget" name="contextActions" native="true">
+            <layout class="QHBoxLayout" name="contextActionsLayout">
+             <property name="spacing">
+              <number>5</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QStackedWidget" name="contentStack">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1000</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

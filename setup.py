@@ -24,35 +24,20 @@ setup(
     package_dir={'': 'src'},
     install_requires=requirements,
     python_requires='>=3.8',
-    entry_points={
-        'console_scripts': [
-            'apt-ex=main:main',
-        ],
-    },
+
     data_files=[
         # Install plugins to system location
         ('/usr/share/apt-ex-package-manager/plugins', [
             'src/controllers/plugins/apt_plugin.py',
             'src/controllers/plugins/flatpak_plugin.py',
-            'src/controllers/plugins/appimage_plugin.py',
-            'src/controllers/plugins/__init__.py',
         ]),
-        # Install UI files
-        ('/usr/share/apt-ex-package-manager/ui', [
-            'src/ui/main_window.ui',
-            'src/ui/category_panel.ui',
-            'src/ui/installed_panel.ui',
-            'src/ui/updates_panel.ui',
-            'src/ui/settings_panel.ui',
-            'src/ui/about_panel.ui',
-        ]),
+
         # Install icons
         ('/usr/share/apt-ex-package-manager/icons', [
             'src/icons/app-icon.svg',
             'src/icons/app-icon-dark.svg',
         ]),
-        # Desktop file
-        ('/usr/share/applications', ['apt-ex-package-manager.desktop']),
+
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

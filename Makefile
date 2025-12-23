@@ -1,45 +1,33 @@
-# Makefile for Apt-Ex Package Manager
+.PHONY: help deb clean install uninstall
 
-PREFIX ?= /usr
-DESTDIR ?=
-PYTHON ?= python3
+help:
+	@echo "Apt-Ex Package Manager - Build Targets"
+	@echo "======================================"
+	@echo "  deb        - Build Debian package"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  install    - Install locally (requires sudo)"
+	@echo "  uninstall  - Uninstall (requires sudo)"
 
-.PHONY: install uninstall clean test
-
-install:
-	# Install Python package
-	$(PYTHON) setup.py install --prefix=$(PREFIX) --root=$(DESTDIR)
-	
-	# Create plugin directory
-	install -d $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/plugins
-	
-	# Copy plugins
-	install -m 644 src/controllers/plugins/*.py $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/plugins/
-	
-	# Copy UI files
-	install -d $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/ui
-	install -m 644 src/ui/*.ui $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/ui/
-	
-	# Copy icons
-	install -d $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/icons
-	install -m 644 src/icons/*.svg $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager/icons/
-	
-	# Install desktop file
-	install -d $(DESTDIR)$(PREFIX)/share/applications
-	install -m 644 apt-ex-package-manager.desktop $(DESTDIR)$(PREFIX)/share/applications/
-
-uninstall:
-	rm -rf $(DESTDIR)$(PREFIX)/share/apt-ex-package-manager
-	rm -f $(DESTDIR)$(PREFIX)/share/applications/apt-ex-package-manager.desktop
-	$(PYTHON) setup.py uninstall
+deb:
+	@./build-deb.sh
 
 clean:
-	rm -rf build dist *.egg-info
-	find . -type d -name __pycache__ -exec rm -rf {} +
+	rm -rf debian/apt-ex-package-manager
+	rm -rf debian/.debhelper
+	rm -rf debian/files
+	rm -rf debian/*.substvars
+	rm -rf debian/*.log
+	rm -f ../*.deb ../*.build ../*.buildinfo ../*.changes
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 
-test:
-	$(PYTHON) -m pytest tests/
+install:
+	@if [ -f ../apt-ex-package-manager_*.deb ]; then \
+		sudo apt install ../apt-ex-package-manager_*.deb; \
+	else \
+		echo "No .deb file found. Run 'make deb' first."; \
+		exit 1; \
+	fi
 
-dev:
-	$(PYTHON) src/main.py
+uninstall:
+	sudo apt remove apt-ex-package-manager

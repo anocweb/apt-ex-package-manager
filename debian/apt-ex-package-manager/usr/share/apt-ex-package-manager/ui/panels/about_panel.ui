@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AboutPanel</class>
+ <widget class="QWidget" name="AboutPanel">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>750</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="aboutLayout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+
+   <item>
+    <widget class="QLabel" name="aboutContent">
+     <property name="text">
+      <string>A modern package manager for Linux systems\nVersion 1.0</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="referencesTitle">
+     <property name="text">
+      <string>&lt;h3&gt;References &amp; Acknowledgments&lt;/h3&gt;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="referencesContent">
+     <property name="text">
+      <string>&lt;p&gt;&lt;b&gt;PyQt6&lt;/b&gt; - Cross-platform GUI toolkit&lt;br/&gt;
+&lt;a href="https://www.riverbankcomputing.com/software/pyqt/"&gt;https://www.riverbankcomputing.com/software/pyqt/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;GNOME ODRS&lt;/b&gt; - Open Desktop Ratings Service&lt;br/&gt;
+&lt;a href="https://odrs.gnome.org/"&gt;https://odrs.gnome.org/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;KDE Discover&lt;/b&gt; - UI/UX Design Inspiration&lt;br/&gt;
+&lt;a href="https://apps.kde.org/discover/"&gt;https://apps.kde.org/discover/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;KDE Frameworks&lt;/b&gt; - Icon Theme and Resources&lt;br/&gt;
+&lt;a href="https://develop.kde.org/frameworks/"&gt;https://develop.kde.org/frameworks/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;APT&lt;/b&gt; - Advanced Package Tool&lt;br/&gt;
+&lt;a href="https://wiki.debian.org/Apt"&gt;https://wiki.debian.org/Apt&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;Flatpak&lt;/b&gt; - Application Distribution Framework&lt;br/&gt;
+&lt;a href="https://flatpak.org/"&gt;https://flatpak.org/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;AppImage&lt;/b&gt; - Portable Application Format&lt;br/&gt;
+&lt;a href="https://appimage.org/"&gt;https://appimage.org/&lt;/a&gt;&lt;/p&gt;</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignTop</set>
+     </property>
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install UI files
+	install -d debian/apt-ex-package-manager/usr/share/apt-ex-package-manager/ui
+	cp -r src/ui/*.ui debian/apt-ex-package-manager/usr/share/apt-ex-package-manager/ui/ || true
+	# Install icons
+	install -d debian/apt-ex-package-manager/usr/share/apt-ex-package-manager/icons
+	cp src/icons/*.svg debian/apt-ex-package-manager/usr/share/apt-ex-package-manager/icons/
+	# Install desktop file
+	install -d debian/apt-ex-package-manager/usr/share/applications
+	install -m 644 debian/apt-ex-package-manager.desktop debian/apt-ex-package-manager/usr/share/applications/
+	# Install systemd service
+	install -d debian/apt-ex-package-manager/usr/lib/systemd/system
+	install -m 644 systemd/apt-ex-update-checker.service debian/apt-ex-package-manager/usr/lib/systemd/system/
+	install -d debian/apt-ex-package-manager/usr/lib/systemd/system-preset
+	install -m 644 systemd/90-apt-ex.preset debian/apt-ex-package-manager/usr/lib/systemd/system-preset/

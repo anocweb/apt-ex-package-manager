@@ -1,9 +1,15 @@
+#!/usr/bin/env python3
+"""Launcher script for Apt-Ex Package Manager"""
 import sys
 import os
 import fcntl
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtNetwork import QLocalSocket, QLocalServer
 from PyQt6.QtCore import QByteArray, Qt
+
+# Add installed package to path
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+
 from config.app_config import AppConfig
 from controllers.application_controller import ApplicationController
 
@@ -76,5 +82,5 @@ def main():
         except:
             pass
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    main()

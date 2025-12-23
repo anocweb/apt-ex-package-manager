@@ -1,0 +1,5 @@
+apt-ex usr/bin/
+src/controllers/plugins/*.py usr/share/apt-ex-package-manager/plugins/
+src/ui/panels/*.ui usr/share/apt-ex-package-manager/ui/panels/
+src/ui/widgets/*.ui usr/share/apt-ex-package-manager/ui/widgets/
+src/ui/windows/*.ui usr/share/apt-ex-package-manager/ui/windows/

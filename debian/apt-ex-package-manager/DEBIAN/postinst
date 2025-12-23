@@ -1,0 +1,64 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Enable and start the update daemon
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload || true
+            systemctl enable apt-ex-update-checker.service || true
+            systemctl start apt-ex-update-checker.service || true
+        fi
+        ;;
+esac
+
+
+# Automatically added by dh_python3
+if command -v py3compile >/dev/null 2>&1; then
+	py3compile -p apt-ex-package-manager 
+fi
+if command -v pypy3compile >/dev/null 2>&1; then
+	pypy3compile -p apt-ex-package-manager  || true
+fi
+
+if command -v py3compile >/dev/null 2>&1; then
+	py3compile -p apt-ex-package-manager /usr/share/apt-ex-package-manager
+fi
+if command -v pypy3compile >/dev/null 2>&1; then
+	pypy3compile -p apt-ex-package-manager /usr/share/apt-ex-package-manager || true
+fi
+
+# End automatically added section
+# Automatically added by dh_installsystemd/13.24.2ubuntu1
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+	# The following line should be removed in trixie or trixie+1
+	deb-systemd-helper unmask 'apt-ex-update-checker.service' >/dev/null || true
+
+	# was-enabled defaults to true, so new installations run enable.
+	if deb-systemd-helper --quiet was-enabled 'apt-ex-update-checker.service'; then
+		# Enables the unit on first installation, creates new
+		# symlinks on upgrades if the unit file has changed.
+		deb-systemd-helper enable 'apt-ex-update-checker.service' >/dev/null || true
+	else
+		# Update the statefile to add new symlinks (if any), which need to be
+		# cleaned up on purge. Also remove old symlinks.
+		deb-systemd-helper update-state 'apt-ex-update-checker.service' >/dev/null || true
+	fi
+fi
+# End automatically added section
+# Automatically added by dh_installsystemd/13.24.2ubuntu1
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+	if [ -d /run/systemd/system ]; then
+		systemctl --system daemon-reload >/dev/null || true
+		if [ -n "$2" ]; then
+			_dh_action=restart
+		else
+			_dh_action=start
+		fi
+		deb-systemd-invoke $_dh_action 'apt-ex-update-checker.service' >/dev/null || true
+	fi
+fi
+# End automatically added section
+
+
+exit 0
