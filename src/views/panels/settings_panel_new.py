@@ -1,9 +1,8 @@
 """Settings panel controller with dynamic backend integration"""
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QTreeWidget, QTreeWidgetItem, QGroupBox)
-from PyQt6.QtCore import pyqtSignal
+                             QPushButton, QTreeWidget, QTreeWidgetItem, QGroupBox, QListWidgetItem)
+from PyQt6.QtCore import pyqtSignal, Qt
 from .base_panel import BasePanel
-from widgets.backend_priority_widget import BackendPriorityWidget
 from utils.settings_widget_factory import SettingsWidgetFactory
 import subprocess
 
@@ -15,19 +14,14 @@ class SettingsPanel(BasePanel):
     
     def setup_ui(self):
         """Setup settings panel UI"""
-        # Setup backend priority widget
-        self.priority_widget = BackendPriorityWidget()
-        self.priorityContainerLayout.addWidget(self.priority_widget)
+        # Setup general settings
+        self.setup_general_settings()
         
-        # Load current priority
-        self.load_backend_priority()
+        # Setup backend preference radio buttons
+        self.setup_backend_preference()
         
-        # Load backends and their settings
-        self.current_sort = 'priority'
+        # Load backend sections in priority order
         self.load_backend_sections()
-        
-        # Setup daemon controls
-        self.setup_daemon_controls()
     
     def connect_signals(self):
         """Connect signals"""
@@ -35,149 +29,139 @@ class SettingsPanel(BasePanel):
             self.odrsEnabledCheckbox.toggled.connect(self.set_odrs_enabled)
             self.odrsEnabledCheckbox.setChecked(self.app_settings.get_odrs_enabled())
         
-        self.priority_widget.priority_changed.connect(self.on_priority_changed)
+        if hasattr(self, 'updateCheckEnabled'):
+            self.updateCheckEnabled.toggled.connect(self.on_update_check_changed)
+            self.updateCheckEnabled.setChecked(self.app_settings.get_update_check_enabled())
         
-        if hasattr(self, 'sortComboBox'):
-            self.sortComboBox.currentTextChanged.connect(self.on_sort_changed)
+        if hasattr(self, 'updateIntervalCombo'):
+            self.updateIntervalCombo.currentIndexChanged.connect(self.on_interval_changed)
+        
+        if hasattr(self, 'backendPriorityList'):
+            self.backendPriorityList.model().rowsMoved.connect(self.on_backend_priority_changed)
     
     def get_title(self):
         """Return panel title"""
         return "Settings"
     
-    def load_backend_priority(self):
-        """Load backend priority from settings"""
+    def setup_general_settings(self):
+        """Setup general settings section"""
+        # Load ODRS setting
+        if hasattr(self, 'odrsEnabledCheckbox'):
+            self.odrsEnabledCheckbox.setChecked(self.app_settings.get_odrs_enabled())
+        
+        # Load update check settings
+        if hasattr(self, 'updateCheckEnabled'):
+            self.updateCheckEnabled.setChecked(self.app_settings.get_update_check_enabled())
+        
+        if hasattr(self, 'updateIntervalCombo'):
+            # Map minutes to combo index
+            interval_map = {60: 0, 120: 1, 240: 2, 360: 3, 720: 4, 1440: 5}
+            current_interval = self.app_settings.get_update_check_interval()
+            index = interval_map.get(current_interval, 2)  # Default to 4 hours
+            self.updateIntervalCombo.setCurrentIndex(index)
+    
+    def setup_backend_preference(self):
+        """Setup backend preference drag-and-drop list"""
         try:
-            # Get available backends
             available_backends = self.package_manager.get_available_backends()
-            
             if not available_backends:
-                self.logger.warning("No backends available")
                 return
             
-            # Get saved priority
-            saved_priority = self.app_settings.get_backend_priority()
+            # Get priority order
+            priority_order = self.app_settings.get_backend_priority()
+            if priority_order:
+                ordered_backends = [bid for bid in priority_order if bid in available_backends]
+                for bid in available_backends:
+                    if bid not in ordered_backends:
+                        ordered_backends.append(bid)
+            else:
+                ordered_backends = available_backends
             
-            # Build backend list with display names
-            backend_list = []
-            for backend_id in available_backends:
+            # Populate list
+            for backend_id in ordered_backends:
                 backend = self.package_manager.get_backend(backend_id)
                 if backend:
-                    backend_list.append({
-                        'id': backend_id,
-                        'display_name': backend.display_name
-                    })
-            
-            if not backend_list:
-                self.logger.warning("No valid backends found")
-                return
-            
-            self.priority_widget.set_backends(backend_list)
-            
-            # Apply saved priority order
-            if saved_priority:
-                # Filter to only include available backends
-                valid_priority = [bid for bid in saved_priority if bid in available_backends]
-                # Add any new backends not in saved priority
-                for bid in available_backends:
-                    if bid not in valid_priority:
-                        valid_priority.append(bid)
-                self.priority_widget.set_priority_order(valid_priority)
-            else:
-                # Use discovery order as default
-                self.priority_widget.set_priority_order(available_backends)
+                    item = QListWidgetItem(backend.display_name)
+                    item.setData(Qt.ItemDataRole.UserRole, backend_id)
+                    self.backendPriorityList.addItem(item)
         except Exception as e:
-            self.logger.error(f"Error loading backend priority: {e}")
+            self.logger.error(f"Error setting up backend preference: {e}")
     
-    def on_priority_changed(self, priority_order):
-        """Handle priority order change"""
-        self.app_settings.set_backend_priority(priority_order)
-        self.logger.info(f"Backend priority updated: {priority_order}")
-        
-        # Update backend section headers if sorted by priority
-        if self.current_sort == 'priority':
-            self.refresh_backend_sections()
-    
-    def on_sort_changed(self, sort_text):
-        """Handle sort order change"""
-        self.current_sort = 'priority' if sort_text == 'Priority' else 'alphabetical'
-        self.refresh_backend_sections()
+    def on_backend_priority_changed(self):
+        """Handle backend priority reordering"""
+        try:
+            priority_order = []
+            for i in range(self.backendPriorityList.count()):
+                item = self.backendPriorityList.item(i)
+                backend_id = item.data(Qt.ItemDataRole.UserRole)
+                priority_order.append(backend_id)
+            
+            self.app_settings.set_backend_priority(priority_order)
+            self.logger.info(f"Backend priority updated: {priority_order}")
+            
+            # Set first backend as default
+            if priority_order:
+                self.app_settings.set_default_repository(priority_order[0])
+                self.default_repository_changed.emit(priority_order[0])
+            
+            # Reload backend sections
+            self.load_backend_sections()
+        except Exception as e:
+            self.logger.error(f"Error updating backend priority: {e}")
     
     def load_backend_sections(self):
-        """Load backend-specific settings sections"""
+        """Load backend-specific settings sections in priority order"""
         try:
-            # Clear existing backend sections
-            layout = self.backendSettingsLayout
+            layout = self.backendSectionsLayout
             while layout.count():
                 child = layout.takeAt(0)
                 if child.widget():
                     child.widget().deleteLater()
             
-            # Get available backends
             available_backends = self.package_manager.get_available_backends()
-            
             if not available_backends:
-                self.logger.warning("No backends available for settings")
                 return
             
-            # Order backends based on current sort
-            if self.current_sort == 'alphabetical':
-                # Sort alphabetically by display name
-                backend_items = []
-                for backend_id in available_backends:
-                    backend = self.package_manager.get_backend(backend_id)
-                    if backend:
-                        backend_items.append((backend.display_name, backend_id, backend))
-                backend_items.sort(key=lambda x: x[0])
-                ordered_backends = [(bid, backend, None) for _, bid, backend in backend_items]
+            # Get priority order
+            priority_order = self.app_settings.get_backend_priority()
+            if priority_order:
+                ordered_backends = [bid for bid in priority_order if bid in available_backends]
+                for bid in available_backends:
+                    if bid not in ordered_backends:
+                        ordered_backends.append(bid)
             else:
-                # Sort by priority
-                priority_order = self.app_settings.get_backend_priority()
-                if priority_order:
-                    ordered_backend_ids = [bid for bid in priority_order if bid in available_backends]
-                    for bid in available_backends:
-                        if bid not in ordered_backend_ids:
-                            ordered_backend_ids.append(bid)
-                else:
-                    ordered_backend_ids = available_backends
-                
-                ordered_backends = []
-                for index, backend_id in enumerate(ordered_backend_ids):
-                    backend = self.package_manager.get_backend(backend_id)
-                    if backend:
-                        ordered_backends.append((backend_id, backend, index + 1))
+                ordered_backends = available_backends
             
             # Create section for each backend
-            for backend_id, backend, priority_num in ordered_backends:
-                section = self.create_backend_section(backend, priority_num)
-                layout.addWidget(section)
+            for backend_id in ordered_backends:
+                backend = self.package_manager.get_backend(backend_id)
+                if backend:
+                    section = self.create_backend_section(backend)
+                    layout.addWidget(section)
         except Exception as e:
             self.logger.error(f"Error loading backend sections: {e}")
     
-    def refresh_backend_sections(self):
-        """Refresh backend sections to update priority numbers"""
-        self.load_backend_sections()
-    
-    def create_backend_section(self, backend, priority_num):
+    def create_backend_section(self, backend):
         """Create settings section for a backend
         
         Args:
             backend: Backend controller instance
-            priority_num: Priority position (1 = highest) or None for alphabetical
         
         Returns:
-            QGroupBox containing backend settings
+            QWidget containing backend settings
         """
-        if priority_num:
-            title = f"{backend.display_name} (#{priority_num} Priority)"
-        else:
-            title = backend.display_name
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(15)
         
-        group = QGroupBox(title)
-        group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 13px; }")
-        layout = QVBoxLayout(group)
+        # Backend title
+        title_label = QLabel(backend.display_name)
+        title_label.setStyleSheet("font-weight: bold; font-size: 18px;")
+        layout.addWidget(title_label)
         
         # Check if backend provides custom widget
-        custom_widget = backend.get_settings_widget(group)
+        custom_widget = backend.get_settings_widget(container)
         if custom_widget:
             layout.addWidget(custom_widget)
         else:
@@ -193,8 +177,8 @@ class SettingsPanel(BasePanel):
                 layout.addWidget(settings_widget)
             else:
                 # No settings available
-                no_settings_label = QLabel("No configurable settings for this backend.")
-                no_settings_label.setStyleSheet("color: gray; font-style: italic;")
+                no_settings_label = QLabel("No configurable settings.")
+                no_settings_label.setStyleSheet("color: palette(mid); font-style: italic;")
                 layout.addWidget(no_settings_label)
         
         # Add repository management section if backend supports it
@@ -202,7 +186,7 @@ class SettingsPanel(BasePanel):
             repo_section = self.create_repository_section(backend)
             layout.addWidget(repo_section)
         
-        return group
+        return container
     
     def create_repository_section(self, backend):
         """Create repository management section for backend"""
@@ -210,33 +194,21 @@ class SettingsPanel(BasePanel):
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 10, 0, 0)
         
-        # Header with actions
-        header = QWidget()
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        # Sources label
+        sources_label = QLabel("Sources")
+        sources_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        layout.addWidget(sources_label)
         
-        repo_label = QLabel("Repository Sources")
-        repo_label.setStyleSheet("font-weight: bold; font-size: 12px;")
-        header_layout.addWidget(repo_label)
-        header_layout.addStretch()
-        
-        # Backend-specific action buttons
-        if backend.backend_id == 'apt':
-            sources_btn = QPushButton("📦 Software Sources")
-            sources_btn.clicked.connect(lambda: self.open_apt_sources())
-            header_layout.addWidget(sources_btn)
-        
-        layout.addWidget(header)
-        
-        # Repository list (placeholder for now)
+        # Repository table (placeholder)
         repo_tree = QTreeWidget()
-        repo_tree.setHeaderHidden(True)
+        repo_tree.setHeaderLabels(["Enabled", "URI", "Suite", "Components"])
         repo_tree.setRootIsDecorated(False)
         repo_tree.setMaximumHeight(150)
         
-        # Add placeholder items
-        item = QTreeWidgetItem([f"Repository management for {backend.display_name}"])
-        repo_tree.addTopLevelItem(item)
+        # Add placeholder items for APT
+        if backend.backend_id == 'apt':
+            item = QTreeWidgetItem(["✓", "http://archive.ubuntu.com/ubuntu", "noble", "main restricted"])
+            repo_tree.addTopLevelItem(item)
         
         layout.addWidget(repo_tree)
         
@@ -265,7 +237,21 @@ class SettingsPanel(BasePanel):
         self.app_settings.set_odrs_enabled(enabled)
         self.logger.info(f"ODRS {'enabled' if enabled else 'disabled'}")
     
-    def setup_daemon_controls(self):
+    def on_update_check_changed(self, enabled):
+        """Handle update check enabled change"""
+        self.app_settings.set_update_check_enabled(enabled)
+        self.logger.info(f"Update checks {'enabled' if enabled else 'disabled'}")
+        if hasattr(self, 'updateIntervalWidget'):
+            self.updateIntervalWidget.setEnabled(enabled)
+    
+    def on_interval_changed(self, index):
+        """Handle update interval change"""
+        interval_map = {0: 60, 1: 120, 2: 240, 3: 360, 4: 720, 5: 1440}
+        minutes = interval_map.get(index, 240)
+        self.app_settings.set_update_check_interval(minutes)
+        self.logger.info(f"Update interval set to {minutes} minutes")
+    
+    def setup_daemon_controls_old(self):
         """Setup update daemon controls"""
         from PyQt6.QtWidgets import QCheckBox, QComboBox, QSpacerItem, QSizePolicy
         from utils.daemon_manager import DaemonManager

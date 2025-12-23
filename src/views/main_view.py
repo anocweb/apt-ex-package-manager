@@ -112,7 +112,7 @@ class MainView(QMainWindow):
             'category': ('src/ui/panels/category_panel.ui', CategoryPanel),
             'category_list': ('src/ui/panels/category_list_panel.ui', CategoryListPanel),
             'package_detail': ('src/ui/panels/package_detail_panel.ui', PackageDetailPanel),
-            'settings': ('src/ui/panels/settings_panel_new.ui', SettingsPanel),
+            'settings': ('src/ui/panels/settings_panel.ui', SettingsPanel),
             'plugins': ('src/ui/panels/plugins_panel.ui', PluginsPanel),
             'about': ('src/ui/panels/about_panel.ui', AboutPanel)
         }
