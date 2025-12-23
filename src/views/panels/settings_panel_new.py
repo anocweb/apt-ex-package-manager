@@ -123,6 +123,9 @@ class SettingsPanel(BasePanel):
             
             self.app_settings.set('enabled_backends', enabled_backends)
             self.logger.info(f"Backend {backend_id} {'enabled' if enabled else 'disabled'}")
+            
+            # Reload backend sections to show/hide settings
+            self.load_backend_sections()
         except Exception as e:
             self.logger.error(f"Error updating backend enabled state: {e}")
     
@@ -164,7 +167,7 @@ class SettingsPanel(BasePanel):
             if not available_backends:
                 return
             
-            # Get priority order
+            # Get priority order and enabled backends
             priority_order = self.app_settings.get_backend_priority()
             if priority_order:
                 ordered_backends = [bid for bid in priority_order if bid in available_backends]
@@ -174,20 +177,26 @@ class SettingsPanel(BasePanel):
             else:
                 ordered_backends = available_backends
             
+            enabled_backends = self.app_settings.get('enabled_backends', ordered_backends)
+            if not isinstance(enabled_backends, list):
+                enabled_backends = ordered_backends
+            
             # Create section for each backend
             for backend_id in ordered_backends:
                 backend = self.package_manager.get_backend(backend_id)
                 if backend:
-                    section = self.create_backend_section(backend)
+                    is_enabled = backend_id in enabled_backends
+                    section = self.create_backend_section(backend, is_enabled)
                     layout.addWidget(section)
         except Exception as e:
             self.logger.error(f"Error loading backend sections: {e}")
     
-    def create_backend_section(self, backend):
+    def create_backend_section(self, backend, is_enabled=True):
         """Create settings section for a backend
         
         Args:
             backend: Backend controller instance
+            is_enabled: Whether the backend is enabled
         
         Returns:
             QWidget containing backend settings
@@ -198,9 +207,19 @@ class SettingsPanel(BasePanel):
         layout.setSpacing(15)
         
         # Backend title
-        title_label = QLabel(backend.display_name)
-        title_label.setStyleSheet("font-weight: bold; font-size: 18px;")
+        title_text = backend.display_name
+        if not is_enabled:
+            title_text += " (disabled)"
+        title_label = QLabel(title_text)
+        if is_enabled:
+            title_label.setStyleSheet("font-weight: bold; font-size: 18px;")
+        else:
+            title_label.setStyleSheet("font-weight: bold; font-size: 18px; color: palette(mid);")
         layout.addWidget(title_label)
+        
+        # Only show settings if enabled
+        if not is_enabled:
+            return container
         
         # Check if backend provides custom widget
         custom_widget = backend.get_settings_widget(container)

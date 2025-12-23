@@ -35,14 +35,14 @@ class BackendPreferenceItem(QWidget):
         if status and (status.get('missing_system_deps') or status.get('missing_python_deps')):
             # Warning icon for issues
             self.status_icon = QLabel("⚠")
-            self.status_icon.setStyleSheet("font-size: 16px; color: #FFA500;")
+            self.status_icon.setStyleSheet("font-size: 16px; color: #FFA500; padding-right: 5px;")
             self.status_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             self.status_icon.mousePressEvent = self.show_warning_tooltip
             layout.addWidget(self.status_icon)
         else:
             # Info icon for healthy plugins
             self.status_icon = QLabel("ⓘ")
-            self.status_icon.setStyleSheet("font-size: 16px; color: palette(mid);")
+            self.status_icon.setStyleSheet("font-size: 16px; color: palette(mid); padding-right: 5px;")
             self.status_icon.setCursor(Qt.CursorShape.PointingHandCursor)
             self.status_icon.mousePressEvent = self.show_info_tooltip
             layout.addWidget(self.status_icon)
