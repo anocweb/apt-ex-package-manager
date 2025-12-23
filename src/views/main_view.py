@@ -65,6 +65,12 @@ class MainView(QMainWindow):
         # Apply theme-aware sidebar styling
         self.apply_sidebar_theme()
         
+        # Set window background to base color
+        self.centralWidget().setStyleSheet("QWidget#centralwidget { background-color: palette(base); }")
+        
+        # Set header background to mid color
+        self.headerWidget.setStyleSheet("QWidget#headerWidget { background-color: palette(mid); }")
+        
         # Setup window icon
         self.setup_window_icon()
         
