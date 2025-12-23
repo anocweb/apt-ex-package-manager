@@ -113,10 +113,10 @@ class MainView(QMainWindow):
     
     def apply_sidebar_theme(self):
         """Apply theme-aware styling to sidebar"""
-        # Use palette(base) for sidebar - it's darker than window in dark themes
+        # Sidebar with no background (inherits from parent)
         self.sidebar.setStyleSheet("""
             QWidget#sidebar {
-                background-color: palette(base);
+                background-color: transparent;
                 border-right: 1px solid palette(mid);
             }
             QPushButton {
