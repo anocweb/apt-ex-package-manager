@@ -132,13 +132,6 @@ QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</strin
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pluginsBtn">
-         <property name="text">
-          <string>🔌 Plugins</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QPushButton" name="aboutBtn">
          <property name="text">
           <string>ℹ️ About</string>
