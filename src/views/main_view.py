@@ -68,8 +68,8 @@ class MainView(QMainWindow):
         # Set window background to base color
         self.centralWidget().setStyleSheet("QWidget#centralwidget { background-color: palette(base); }")
         
-        # Set header background to mid color
-        self.headerWidget.setStyleSheet("QWidget#headerWidget { background-color: palette(mid); }")
+        # Set header background to window color
+        self.headerWidget.setStyleSheet("QWidget#headerWidget { background-color: palette(window); }")
         
         # Setup window icon
         self.setup_window_icon()
