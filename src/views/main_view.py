@@ -62,6 +62,9 @@ class MainView(QMainWindow):
         uic.loadUi('src/ui/windows/main_window.ui', self)
         self.setMinimumSize(1150, 700)
         
+        # Apply theme-aware sidebar styling
+        self.apply_sidebar_theme()
+        
         # Setup window icon
         self.setup_window_icon()
         
@@ -101,6 +104,34 @@ class MainView(QMainWindow):
             for size in [16, 32, 48, 64]:
                 icon.addFile(icon_path, QSize(size, size))
             self.setWindowIcon(icon)
+    
+    def apply_sidebar_theme(self):
+        """Apply theme-aware styling to sidebar"""
+        # Use palette(base) for sidebar - it's darker than window in dark themes
+        self.sidebar.setStyleSheet("""
+            QWidget#sidebar {
+                background-color: palette(base);
+                border-right: 1px solid palette(mid);
+            }
+            QPushButton {
+                text-align: left;
+                padding: 8px 16px;
+                border: none;
+                color: palette(window-text);
+                font-size: 14px;
+                background-color: transparent;
+            }
+            QPushButton:hover {
+                background-color: palette(alternate-base);
+            }
+            QPushButton:pressed {
+                background-color: palette(mid);
+            }
+            QPushButton[selected="true"] {
+                background-color: palette(highlight);
+                color: palette(highlighted-text);
+            }
+        """)
     
     def load_panels(self):
         """Load all panel controllers"""

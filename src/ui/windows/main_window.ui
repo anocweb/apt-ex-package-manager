@@ -36,17 +36,7 @@
        </size>
       </property>
       <property name="styleSheet">
-       <string>QWidget#sidebar { background-color: #2d3142; }
-QPushButton { 
-  text-align: left; 
-  padding: 8px 16px; 
-  border: none; 
-  color: white;
-  font-size: 14px;
-}
-QPushButton:hover { background-color: #3e4a61; }
-QPushButton:pressed { background-color: #1e2328; }
-QPushButton[selected="true"] { background-color: #4a90e2; color: white; }</string>
+       <string/>
       </property>
       <layout class="QVBoxLayout" name="sidebarWrapperLayout">
        <property name="spacing">
