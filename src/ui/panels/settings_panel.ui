@@ -217,10 +217,23 @@
           <item>
            <widget class="QLabel" name="backendPreferenceTitle">
             <property name="text">
-             <string>Backend Preference</string>
+             <string>Plugins</string>
             </property>
             <property name="styleSheet">
              <string>font-weight: bold; font-size: 18px;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="pluginsDescription">
+            <property name="text">
+             <string>Enable or disable package manager plugins. Drag to reorder search priority - plugins at the top are searched first.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>color: palette(mid); font-size: 11px;</string>
             </property>
            </widget>
           </item>
@@ -235,8 +248,8 @@
             <property name="selectionMode">
              <enum>QAbstractItemView::SingleSelection</enum>
             </property>
-            <property name="maximumHeight">
-             <number>150</number>
+            <property name="sizeAdjustPolicy">
+             <enum>QAbstractScrollArea::AdjustToContents</enum>
             </property>
            </widget>
           </item>

@@ -96,6 +96,12 @@ class SettingsPanel(BasePanel):
                     item.setSizeHint(widget.sizeHint())
                     self.backendPriorityList.addItem(item)
                     self.backendPriorityList.setItemWidget(item, widget)
+            
+            # Adjust height to fit items
+            if self.backendPriorityList.count() > 0:
+                item_height = self.backendPriorityList.sizeHintForRow(0)
+                total_height = item_height * self.backendPriorityList.count() + 10
+                self.backendPriorityList.setFixedHeight(total_height)
         except Exception as e:
             self.logger.error(f"Error setting up backend preference: {e}")
     
