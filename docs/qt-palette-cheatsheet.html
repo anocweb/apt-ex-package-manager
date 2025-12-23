@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qt Palette Color Cheatsheet</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+        }
+        .themes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .theme-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .theme-section.dark {
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h2 {
+            margin-top: 0;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 10px;
+        }
+        .color-grid {
+            display: grid;
+            gap: 12px;
+        }
+        .color-item {
+            display: grid;
+            grid-template-columns: 80px 1fr 100px;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        .dark .color-item {
+            background: #2a2a2a;
+        }
+        .color-swatch {
+            width: 80px;
+            height: 40px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+        .color-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .color-hex {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #666;
+            text-align: right;
+        }
+        .dark .color-hex {
+            color: #999;
+        }
+        .usage-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f4f8;
+            border-radius: 8px;
+        }
+        .usage-section h3 {
+            margin-top: 0;
+            color: #2c5aa0;
+        }
+        .code-example {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 8px 0;
+            border-left: 3px solid #4a90e2;
+        }
+        @media (max-width: 1024px) {
+            .themes {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Qt Palette Color Cheatsheet</h1>
+        <p class="subtitle">Reference for theme-aware colors in Apt-Ex Package Manager</p>
+        
+        <div class="themes">
+            <!-- Light Theme -->
+            <div class="theme-section">
+                <h2>Light Theme</h2>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #eff0f1;"></div>
+                        <div class="color-name">Window</div>
+                        <div class="color-hex">#eff0f1</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #fcfcfc;"></div>
+                        <div class="color-name">Base</div>
+                        <div class="color-hex">#fcfcfc</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #f7f7f7;"></div>
+                        <div class="color-name">AlternateBase</div>
+                        <div class="color-hex">#f7f7f7</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #eff0f1;"></div>
+                        <div class="color-name">Button</div>
+                        <div class="color-hex">#eff0f1</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #232629;"></div>
+                        <div class="color-name">WindowText</div>
+                        <div class="color-hex">#232629</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #3daee9;"></div>
+                        <div class="color-name">Highlight</div>
+                        <div class="color-hex">#3daee9</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #fcfcfc;"></div>
+                        <div class="color-name">HighlightedText</div>
+                        <div class="color-hex">#fcfcfc</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #bdc3c7;"></div>
+                        <div class="color-name">Mid</div>
+                        <div class="color-hex">#bdc3c7</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #c4c9cd;"></div>
+                        <div class="color-name">Midlight</div>
+                        <div class="color-hex">#c4c9cd</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #a0a4a8;"></div>
+                        <div class="color-name">Dark</div>
+                        <div class="color-hex">#a0a4a8</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #6e7175;"></div>
+                        <div class="color-name">Shadow</div>
+                        <div class="color-hex">#6e7175</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dark Theme -->
+            <div class="theme-section dark">
+                <h2>Dark Theme (Breeze Dark)</h2>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #202326;"></div>
+                        <div class="color-name">Window</div>
+                        <div class="color-hex">#202326</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #141618;"></div>
+                        <div class="color-name">Base</div>
+                        <div class="color-hex">#141618</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #1d1f22;"></div>
+                        <div class="color-name">AlternateBase</div>
+                        <div class="color-hex">#1d1f22</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #292c30;"></div>
+                        <div class="color-name">Button</div>
+                        <div class="color-hex">#292c30</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #eff0f1;"></div>
+                        <div class="color-name">WindowText</div>
+                        <div class="color-hex">#eff0f1</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #3daee9;"></div>
+                        <div class="color-name">Highlight</div>
+                        <div class="color-hex">#3daee9</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #eff0f1;"></div>
+                        <div class="color-name">HighlightedText</div>
+                        <div class="color-hex">#eff0f1</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #31363b;"></div>
+                        <div class="color-name">Mid</div>
+                        <div class="color-hex">#31363b</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #2a2e32;"></div>
+                        <div class="color-name">Midlight</div>
+                        <div class="color-hex">#2a2e32</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #101112;"></div>
+                        <div class="color-name">Dark</div>
+                        <div class="color-hex">#101112</div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-swatch" style="background-color: #0b0c0d;"></div>
+                        <div class="color-name">Shadow</div>
+                        <div class="color-hex">#0b0c0d</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="usage-section">
+            <h3>Usage in Qt Stylesheets</h3>
+            <p>Use these palette colors in your stylesheets to ensure theme compatibility:</p>
+            
+            <div class="code-example">
+                /* Sidebar with darker background */<br>
+                QWidget#sidebar {<br>
+                &nbsp;&nbsp;background-color: palette(base);<br>
+                &nbsp;&nbsp;border-right: 1px solid palette(mid);<br>
+                }
+            </div>
+
+            <div class="code-example">
+                /* Button with theme-aware colors */<br>
+                QPushButton {<br>
+                &nbsp;&nbsp;background-color: palette(button);<br>
+                &nbsp;&nbsp;color: palette(window-text);<br>
+                }<br>
+                QPushButton:hover {<br>
+                &nbsp;&nbsp;background-color: palette(alternate-base);<br>
+                }
+            </div>
+
+            <div class="code-example">
+                /* Selected state */<br>
+                QPushButton[selected="true"] {<br>
+                &nbsp;&nbsp;background-color: palette(highlight);<br>
+                &nbsp;&nbsp;color: palette(highlighted-text);<br>
+                }
+            </div>
+
+            <h3>Common Use Cases</h3>
+            <ul>
+                <li><strong>Window</strong> - Main window background</li>
+                <li><strong>Base</strong> - Darker panels, sidebar (dark theme: #141618)</li>
+                <li><strong>AlternateBase</strong> - Hover states, alternating rows</li>
+                <li><strong>Button</strong> - Button backgrounds</li>
+                <li><strong>Mid</strong> - Borders, separators</li>
+                <li><strong>Highlight</strong> - Selected items, active states</li>
+                <li><strong>HighlightedText</strong> - Text on highlighted backgrounds</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
