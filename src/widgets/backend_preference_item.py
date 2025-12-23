@@ -9,7 +9,7 @@ class BackendPreferenceItem(QWidget):
     
     enabled_changed = pyqtSignal(str, bool)  # backend_id, enabled
     
-    def __init__(self, backend_id, display_name, enabled=True, status=None, parent=None):
+    def __init__(self, backend_id, display_name, version, enabled=True, status=None, parent=None):
         super().__init__(parent)
         self.backend_id = backend_id
         self.status = status
@@ -23,8 +23,9 @@ class BackendPreferenceItem(QWidget):
         drag_icon.setStyleSheet("font-size: 16px; color: palette(mid);")
         layout.addWidget(drag_icon)
         
-        # Enable checkbox
-        self.checkbox = QCheckBox(display_name)
+        # Enable checkbox with version
+        label_text = f"{display_name} (v{version})"
+        self.checkbox = QCheckBox(label_text)
         self.checkbox.setChecked(enabled)
         self.checkbox.toggled.connect(lambda checked: self.enabled_changed.emit(self.backend_id, checked))
         layout.addWidget(self.checkbox)
