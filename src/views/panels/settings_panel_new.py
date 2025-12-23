@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt6.QtCore import pyqtSignal, Qt
 from .base_panel import BasePanel
 from utils.settings_widget_factory import SettingsWidgetFactory
+from widgets.backend_preference_item import BackendPreferenceItem
 import subprocess
 
 
@@ -77,15 +78,43 @@ class SettingsPanel(BasePanel):
             else:
                 ordered_backends = available_backends
             
+            # Get enabled backends
+            enabled_backends = self.app_settings.get('enabled_backends', ordered_backends)
+            if not isinstance(enabled_backends, list):
+                enabled_backends = ordered_backends
+            
             # Populate list
             for backend_id in ordered_backends:
                 backend = self.package_manager.get_backend(backend_id)
                 if backend:
-                    item = QListWidgetItem(backend.display_name)
+                    enabled = backend_id in enabled_backends
+                    widget = BackendPreferenceItem(backend_id, backend.display_name, enabled)
+                    widget.enabled_changed.connect(self.on_backend_enabled_changed)
+                    
+                    item = QListWidgetItem()
                     item.setData(Qt.ItemDataRole.UserRole, backend_id)
+                    item.setSizeHint(widget.sizeHint())
                     self.backendPriorityList.addItem(item)
+                    self.backendPriorityList.setItemWidget(item, widget)
         except Exception as e:
             self.logger.error(f"Error setting up backend preference: {e}")
+    
+    def on_backend_enabled_changed(self, backend_id, enabled):
+        """Handle backend enabled/disabled"""
+        try:
+            enabled_backends = self.app_settings.get('enabled_backends', [])
+            if not isinstance(enabled_backends, list):
+                enabled_backends = []
+            
+            if enabled and backend_id not in enabled_backends:
+                enabled_backends.append(backend_id)
+            elif not enabled and backend_id in enabled_backends:
+                enabled_backends.remove(backend_id)
+            
+            self.app_settings.set('enabled_backends', enabled_backends)
+            self.logger.info(f"Backend {backend_id} {'enabled' if enabled else 'disabled'}")
+        except Exception as e:
+            self.logger.error(f"Error updating backend enabled state: {e}")
     
     def on_backend_priority_changed(self):
         """Handle backend priority reordering"""
@@ -99,10 +128,13 @@ class SettingsPanel(BasePanel):
             self.app_settings.set_backend_priority(priority_order)
             self.logger.info(f"Backend priority updated: {priority_order}")
             
-            # Set first backend as default
-            if priority_order:
-                self.app_settings.set_default_repository(priority_order[0])
-                self.default_repository_changed.emit(priority_order[0])
+            # Set first enabled backend as default
+            enabled_backends = self.app_settings.get('enabled_backends', priority_order)
+            for backend_id in priority_order:
+                if backend_id in enabled_backends:
+                    self.app_settings.set_default_repository(backend_id)
+                    self.default_repository_changed.emit(backend_id)
+                    break
             
             # Reload backend sections
             self.load_backend_sections()
