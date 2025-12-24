@@ -2,6 +2,13 @@
 <ui version="4.0">
  <class>PackageDetailPanel</class>
  <widget class="QWidget" name="PackageDetailPanel">
+  <property name="styleSheet">
+   <string>QWidget { background-color: transparent; }
+QScrollBar { background-color: palette(base); }
+QScrollBar::handle { background-color: palette(button); border-radius: 4px; }
+QScrollBar::handle:hover { background-color: palette(mid); }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; }</string>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>

@@ -1,0 +1,10 @@
+/* Update list item styling */
+
+QLabel#securityLabel {
+    border: none;
+    padding: 2px;
+}
+
+QLabel#securityLabel[security="true"] {
+    color: #FF6B6B;
+}

@@ -2,6 +2,12 @@
 <ui version="4.0">
  <class>InstalledListItem</class>
  <widget class="QFrame" name="InstalledListItem">
+  <property name="autoFillBackground">
+   <bool>true</bool>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: palette(button);</string>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>

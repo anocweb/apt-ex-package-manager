@@ -45,7 +45,7 @@ class BaseListItem(QFrame):
         # Make labels transparent for mouse events
         self._set_labels_transparent()
     
-    def _set_frame_style(self, border_color="palette(mid)", bg_hover="palette(alternate-base)"):
+    def _set_frame_style(self, border_color="palette(mid)", bg_color="palette(button)", bg_hover="palette(alternate-base)"):
         """Set frame style with optional custom colors"""
         if self.dev_outline:
             border = "1px solid red"
@@ -54,7 +54,7 @@ class BaseListItem(QFrame):
         
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: palette(base);
+                background-color: {bg_color};
                 border: {border};
                 border-radius: 8px;
                 padding: 8px;

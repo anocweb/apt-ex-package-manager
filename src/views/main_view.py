@@ -62,15 +62,6 @@ class MainView(QMainWindow):
         uic.loadUi('src/ui/windows/main_window.ui', self)
         self.setMinimumSize(1150, 700)
         
-        # Apply theme-aware sidebar styling
-        self.apply_sidebar_theme()
-        
-        # Set window background to base color
-        self.centralWidget().setStyleSheet("QWidget#centralwidget { background-color: palette(base); }")
-        
-        # Set header background to window color
-        self.headerWidget.setStyleSheet("QWidget#headerWidget { background-color: palette(window); }")
-        
         # Setup window icon
         self.setup_window_icon()
         
@@ -111,34 +102,7 @@ class MainView(QMainWindow):
                 icon.addFile(icon_path, QSize(size, size))
             self.setWindowIcon(icon)
     
-    def apply_sidebar_theme(self):
-        """Apply theme-aware styling to sidebar"""
-        # Sidebar with no background (inherits from parent)
-        self.sidebar.setStyleSheet("""
-            QWidget#sidebar {
-                background-color: transparent;
-                border-right: 1px solid palette(mid);
-            }
-            QPushButton {
-                text-align: left;
-                padding: 8px 16px;
-                border: none;
-                color: palette(window-text);
-                font-size: 14px;
-                background-color: transparent;
-            }
-            QPushButton:hover {
-                background-color: palette(alternate-base);
-            }
-            QPushButton:pressed {
-                background-color: palette(mid);
-            }
-            QPushButton[selected="true"] {
-                background-color: palette(highlight);
-                color: palette(highlighted-text);
-            }
-        """)
-    
+
     def load_panels(self):
         """Load all panel controllers"""
         panel_configs = {
@@ -615,9 +579,18 @@ class MainView(QMainWindow):
         """Add log icon to status bar"""
         from PyQt6.QtWidgets import QLabel
         
+        # Load stylesheet
+        try:
+            with open('src/ui/styles/statusbar.qss', 'r') as f:
+                stylesheet = f.read()
+        except:
+            stylesheet = ""
+        
         # DB stats label
         self.db_stats_label = QLabel()
-        self.db_stats_label.setStyleSheet("padding: 0 10px; font-size: 11px;")
+        self.db_stats_label.setObjectName("db_stats_label")
+        if stylesheet:
+            self.db_stats_label.setStyleSheet(stylesheet)
         self.operation_status_bar.add_permanent_widget(self.db_stats_label)
         
         # Update stats periodically
@@ -628,19 +601,11 @@ class MainView(QMainWindow):
         
         # Log button
         self.log_button = QPushButton("📋")
+        self.log_button.setObjectName("log_button")
         self.log_button.setFixedSize(QSize(24, 24))
         self.log_button.setToolTip("View application logs")
-        self.log_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background: transparent;
-                font-size: 16px;
-            }
-            QPushButton:hover {
-                background-color: palette(highlight);
-                border-radius: 3px;
-            }
-        """)
+        if stylesheet:
+            self.log_button.setStyleSheet(stylesheet)
         self.log_button.clicked.connect(self.show_log_view)
         self.operation_status_bar.add_permanent_widget(self.log_button)
     

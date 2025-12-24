@@ -71,6 +71,14 @@ class CacheUpdateWorker(QThread):
                 self.progress_signal.emit("Updating installed status")
                 apt_controller.update_installed_status(self.lmdb_manager.lmdb_manager)
                 self.logging_service.info("Installed status updated")
+                
+                # Rebuild indexes to update installed index
+                self.logging_service.info("Rebuilding indexes")
+                self.progress_signal.emit("Rebuilding indexes")
+                from cache import PackageCacheModel
+                pkg_cache = PackageCacheModel(self.lmdb_manager, 'apt')
+                pkg_cache.rebuild_indexes()
+                self.logging_service.info("Indexes rebuilt")
             
             self.finished_signal.emit()
             

@@ -1,5 +1,6 @@
 from PyQt6.QtCore import pyqtSignal
 from widgets.base_list_item import BaseListItem
+import os
 
 
 class UpdateListItem(BaseListItem):
@@ -35,6 +36,9 @@ class UpdateListItem(BaseListItem):
         backend = self.update_info.get('backend', 'apt').upper()
         if is_security:
             self.securityLabel.setText(f'🔒 {backend}')
+            self.securityLabel.setProperty("security", "true")
+            self.securityLabel.style().unpolish(self.securityLabel)
+            self.securityLabel.style().polish(self.securityLabel)
             self.iconLabel.setText('🔒')
             self.iconLabel.setStyleSheet(
                 "background-color: rgba(255, 107, 107, 0.2); border-radius: 8px;"

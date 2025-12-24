@@ -1,0 +1,16 @@
+/* Status bar widgets styling */
+
+QLabel#db_stats_label {
+    padding: 0 10px;
+    font-size: 11px;
+}
+
+QPushButton#log_button {
+    border: none;
+    font-size: 16px;
+}
+
+QPushButton#log_button:hover {
+    background-color: palette(highlight);
+    border-radius: 3px;
+}
