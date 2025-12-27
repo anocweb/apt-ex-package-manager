@@ -3,6 +3,11 @@
 
 from setuptools import setup, find_packages
 import os
+import sys
+
+# Add src to path to import version
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+from version import __version__
 
 # Read requirements
 with open('requirements.txt') as f:
@@ -14,7 +19,7 @@ with open('README.md', encoding='utf-8') as f:
 
 setup(
     name='apt-ex-package-manager',
-    version='0.1.0',
+    version=__version__,
     description='Modern graphical package manager for Linux',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -22,6 +27,7 @@ setup(
     url='https://github.com/yourusername/apt-ex-package-manager',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
+    py_modules=['version'],  # Include standalone version.py module
     install_requires=requirements,
     python_requires='>=3.8',
 
