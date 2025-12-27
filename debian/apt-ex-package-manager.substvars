@@ -1,3 +1,0 @@
-python3:Depends=python3-dbus, python3-lmdb, python3-pyqt6, python3-pyte, python3-requests, python3:any
-misc:Depends=
-misc:Pre-Depends=

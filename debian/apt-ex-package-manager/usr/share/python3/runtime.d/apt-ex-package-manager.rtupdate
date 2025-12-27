@@ -1,7 +1,0 @@
-#! /bin/sh
-set -e
-
-if [ "$1" = rtupdate ]; then
-	py3clean -p apt-ex-package-manager /usr/share/apt-ex-package-manager
-	py3compile -p apt-ex-package-manager  /usr/share/apt-ex-package-manager
-fi
