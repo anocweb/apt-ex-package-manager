@@ -155,7 +155,7 @@ class PackageCacheModel:
     def get_packages_by_section(self, section: str) -> List[PackageData]:
         """Get packages by section using index"""
         index_key = f"section:{self.backend}:{section}"
-        index_data = self.lmdb.get(self.indexes_db, index_key)
+        index_data = self.lmdb.get('indexes', index_key)
         
         if not index_data:
             return []
@@ -173,9 +173,15 @@ class PackageCacheModel:
     def get_installed_packages(self) -> List[PackageData]:
         """Get installed packages using index"""
         index_key = f"installed:{self.backend}:1"
-        index_data = self.lmdb.get(self.indexes_db, index_key)
+        print(f"[Cache] Getting installed packages with key: {index_key}")
+        index_data = self.lmdb.get('indexes', index_key)
+        
+        print(f"[Cache] Index data: {index_data is not None}")
+        if index_data:
+            print(f"[Cache] Package IDs count: {len(index_data.get('package_ids', []))}")
         
         if not index_data:
+            print(f"[Cache] No index data found, returning empty list")
             return []
         
         package_ids = index_data.get('package_ids', [])
@@ -186,6 +192,7 @@ class PackageCacheModel:
             if pkg:
                 packages.append(pkg)
         
+        print(f"[Cache] Returning {len(packages)} packages")
         return packages
     
     def update_installed_status(self, package_id: str, is_installed: bool) -> bool:
@@ -251,7 +258,7 @@ class PackageCacheModel:
     def _add_to_index(self, index_type: str, value: str, package_id: str):
         """Add package to index"""
         index_key = f"{index_type}:{self.backend}:{value}"
-        index_data = self.lmdb.get(self.indexes_db, index_key)
+        index_data = self.lmdb.get('indexes', index_key)
         
         if index_data:
             package_ids = index_data.get('package_ids', [])
@@ -277,7 +284,7 @@ class PackageCacheModel:
     def _remove_from_index(self, index_type: str, value: str, package_id: str):
         """Remove package from index"""
         index_key = f"{index_type}:{self.backend}:{value}"
-        index_data = self.lmdb.get(self.indexes_db, index_key)
+        index_data = self.lmdb.get('indexes', index_key)
         
         if index_data:
             package_ids = index_data.get('package_ids', [])

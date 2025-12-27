@@ -1,6 +1,7 @@
 """Base panel class for all panel controllers"""
 from PyQt6.QtWidgets import QWidget
 from PyQt6 import uic
+from utils.path_resolver import PathResolver
 
 
 class BasePanel(QWidget):
@@ -15,7 +16,7 @@ class BasePanel(QWidget):
         self.logger = logging_service.get_logger(self.__class__.__name__)
         
         # Load UI
-        uic.loadUi(ui_file, self)
+        uic.loadUi(PathResolver.get_ui_path(ui_file), self)
         
         # Setup panel
         self.setup_ui()

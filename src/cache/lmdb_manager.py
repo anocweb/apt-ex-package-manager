@@ -108,9 +108,13 @@ class LMDBManager:
     def get(self, db_name: str, key: str) -> Optional[Dict[str, Any]]:
         """Retrieve data from specified database"""
         db = self.get_db(db_name)
+        print(f"[LMDB] get() called: db_name={db_name}, key={key}, db={db}")
         with self.transaction() as txn:
             data = txn.get(key.encode(), db=db)
-            return json.loads(data.decode()) if data else None
+            print(f"[LMDB] Raw data: {data is not None}, length={len(data) if data else 0}")
+            result = json.loads(data.decode()) if data else None
+            print(f"[LMDB] Returning: {result is not None}")
+            return result
     
     def delete(self, db_name: str, key: str) -> bool:
         """Delete data from specified database"""

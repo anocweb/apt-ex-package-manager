@@ -10,7 +10,7 @@ class UpdateListItem(BaseListItem):
     
     def __init__(self, update_info, parent=None):
         self.update_info = update_info
-        super().__init__('src/ui/widgets/update_list_item.ui', parent)
+        super().__init__('widgets/update_list_item.ui', parent)
         self.setup_ui()
     
     def setup_ui(self):

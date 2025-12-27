@@ -2,6 +2,7 @@
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6 import uic
+from utils.path_resolver import PathResolver
 
 
 class BaseListItem(QFrame):
@@ -21,7 +22,7 @@ class BaseListItem(QFrame):
     
     def __init__(self, ui_file, parent=None):
         super().__init__(parent)
-        uic.loadUi(ui_file, self)
+        uic.loadUi(PathResolver.get_ui_path(ui_file), self)
         self._apply_base_styling()
     
     def mouseDoubleClickEvent(self, event):

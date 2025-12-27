@@ -2,6 +2,7 @@
 from PyQt6.QtWidgets import QFrame, QLabel, QMessageBox
 from PyQt6.QtCore import Qt
 from PyQt6 import uic
+from utils.path_resolver import PathResolver
 import subprocess
 
 class PluginCard(QFrame):
@@ -9,7 +10,7 @@ class PluginCard(QFrame):
     
     def __init__(self, status, parent=None):
         super().__init__(parent)
-        uic.loadUi('src/ui/widgets/plugin_card.ui', self)
+        uic.loadUi(PathResolver.get_ui_path('widgets/plugin_card.ui'), self)
         self.status = status
         self.populate()
     

@@ -15,6 +15,7 @@ from views.panels.settings_panel_new import SettingsPanel
 from views.panels.about_panel import AboutPanel
 from views.panels.category_list_panel import CategoryListPanel
 from views.panels.package_detail_panel import PackageDetailPanel
+from utils.path_resolver import PathResolver
 import os
 
 
@@ -59,7 +60,7 @@ class MainView(QMainWindow):
             self.logging_service.enable_file_logging(log_dir)
         
         # Load UI
-        uic.loadUi('src/ui/windows/main_window.ui', self)
+        uic.loadUi(PathResolver.get_ui_path('windows/main_window.ui'), self)
         self.setMinimumSize(1150, 700)
         
         # Setup window icon
@@ -88,32 +89,34 @@ class MainView(QMainWindow):
     
     def setup_window_icon(self):
         """Setup window icon based on theme"""
-        base_path = os.path.join(os.path.dirname(__file__), '..', 'icons')
         palette = self.palette()
         is_dark = palette.color(palette.ColorRole.Window).lightness() < 128
         
-        icon_path = os.path.join(base_path, 'app-icon-dark.svg' if is_dark else 'app-icon.svg')
-        if not os.path.exists(icon_path):
-            icon_path = os.path.join(base_path, 'app-icon.svg')
+        try:
+            icon_path = PathResolver.get_icon_path('app-icon-dark.svg' if is_dark else 'app-icon.svg')
+        except FileNotFoundError:
+            try:
+                icon_path = PathResolver.get_icon_path('app-icon.svg')
+            except FileNotFoundError:
+                return
         
-        if os.path.exists(icon_path):
-            icon = QIcon(icon_path)
-            for size in [16, 32, 48, 64]:
-                icon.addFile(icon_path, QSize(size, size))
-            self.setWindowIcon(icon)
+        icon = QIcon(icon_path)
+        for size in [16, 32, 48, 64]:
+            icon.addFile(icon_path, QSize(size, size))
+        self.setWindowIcon(icon)
     
 
     def load_panels(self):
         """Load all panel controllers"""
         panel_configs = {
-            'home': ('src/ui/panels/home_panel.ui', HomePanel),
-            'installed': ('src/ui/panels/installed_panel.ui', InstalledPanel),
-            'updates': ('src/ui/panels/updates_panel.ui', UpdatesPanel),
-            'category': ('src/ui/panels/category_panel.ui', CategoryPanel),
-            'category_list': ('src/ui/panels/category_list_panel.ui', CategoryListPanel),
-            'package_detail': ('src/ui/panels/package_detail_panel.ui', PackageDetailPanel),
-            'settings': ('src/ui/panels/settings_panel.ui', SettingsPanel),
-            'about': ('src/ui/panels/about_panel.ui', AboutPanel)
+            'home': ('panels/home_panel.ui', HomePanel),
+            'installed': ('panels/installed_panel.ui', InstalledPanel),
+            'updates': ('panels/updates_panel.ui', UpdatesPanel),
+            'category': ('panels/category_panel.ui', CategoryPanel),
+            'category_list': ('panels/category_list_panel.ui', CategoryListPanel),
+            'package_detail': ('panels/package_detail_panel.ui', PackageDetailPanel),
+            'settings': ('panels/settings_panel.ui', SettingsPanel),
+            'about': ('panels/about_panel.ui', AboutPanel)
         }
         
         for panel_name, (ui_file, panel_class) in panel_configs.items():
@@ -581,7 +584,8 @@ class MainView(QMainWindow):
         
         # Load stylesheet
         try:
-            with open('src/ui/styles/statusbar.qss', 'r') as f:
+            stylesheet_path = PathResolver.get_stylesheet_path('statusbar.qss')
+            with open(stylesheet_path, 'r') as f:
                 stylesheet = f.read()
         except:
             stylesheet = ""

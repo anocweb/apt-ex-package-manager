@@ -11,7 +11,7 @@ class PackageListItem(BaseListItem):
     def __init__(self, package, odrs_service=None, parent=None):
         self.package = package
         self.odrs_service = odrs_service or ODRSService()
-        super().__init__('src/ui/widgets/package_list_item.ui', parent)
+        super().__init__('widgets/package_list_item.ui', parent)
         self.setup_ui()
     
     def setup_ui(self):

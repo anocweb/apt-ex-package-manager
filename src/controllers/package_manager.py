@@ -3,6 +3,7 @@ from .base_controller import BasePackageController
 from models.package_model import Package
 from cache import LMDBManager
 from utils.dependency_checker import DependencyChecker
+from utils.path_resolver import PathResolver
 from typing import Dict, List, Optional
 import os
 import sys
@@ -30,11 +31,7 @@ class PackageManager:
     
     def _discover_plugins(self):
         """Auto-discover and register backend plugins"""
-        plugin_paths = [
-            os.path.expanduser('~/.config/apt-ex-package-manager/plugins'),
-            '/usr/share/apt-ex-package-manager/plugins',
-            os.path.join(os.path.dirname(__file__), 'plugins'),
-        ]
+        plugin_paths = PathResolver.get_plugin_paths()
         
         for plugin_dir in plugin_paths:
             if not os.path.exists(plugin_dir):

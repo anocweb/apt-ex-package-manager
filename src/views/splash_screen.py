@@ -2,6 +2,7 @@
 from PyQt6.QtWidgets import QSplashScreen, QWidget, QVBoxLayout, QLabel, QProgressBar
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
+from utils.path_resolver import PathResolver
 import os
 
 
@@ -98,14 +99,10 @@ class SplashScreen(QSplashScreen):
         
     def _get_icon_path(self):
         """Get application icon path"""
-        base_path = os.path.join(os.path.dirname(__file__), '..', 'icons')
-        
-        # Try to detect theme
-        icon_path = os.path.join(base_path, 'app-icon.svg')
-        if os.path.exists(icon_path):
-            return icon_path
-        
-        return None
+        try:
+            return PathResolver.get_icon_path('app-icon.svg')
+        except FileNotFoundError:
+            return None
     
     def update_progress(self, value: int, status: str = None, detail: str = None):
         """Update progress bar and status messages

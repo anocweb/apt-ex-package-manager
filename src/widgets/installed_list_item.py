@@ -9,7 +9,7 @@ class InstalledListItem(BaseListItem):
     
     def __init__(self, package_info, parent=None):
         self.package_info = package_info
-        super().__init__('src/ui/widgets/installed_list_item.ui', parent)
+        super().__init__('widgets/installed_list_item.ui', parent)
         self.setup_ui()
     
     def setup_ui(self):

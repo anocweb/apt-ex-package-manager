@@ -203,17 +203,27 @@ class APTPlugin(BasePackageController):
             pkg_cache = PackageCacheModel(lmdb_manager, 'apt')
             packages = pkg_cache.get_installed_packages()
             
+            if self.logger:
+                self.logger.debug(f"get_installed_packages_list: Retrieved {len(packages)} packages from cache")
+            
             if limit:
                 packages = packages[offset:offset+limit]
             
-            return [{
+            result = [{
                 'name': pkg.name,
                 'version': pkg.version,
                 'description': pkg.summary or pkg.description
             } for pkg in packages]
+            
+            if self.logger:
+                self.logger.debug(f"get_installed_packages_list: Returning {len(result)} packages")
+            
+            return result
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error loading installed packages: {e}")
+                import traceback
+                self.logger.error(traceback.format_exc())
             return []
     
     def update_installed_status(self, lmdb_manager):
