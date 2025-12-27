@@ -64,3 +64,7 @@ Thumbs.db
 *.log
 logs/
 data/
+.debian/
+debian
+.tmp/
+builds/
